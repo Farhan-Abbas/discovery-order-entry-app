@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, validator
 from typing import List
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 import re
@@ -61,13 +61,22 @@ async def create_order(order: Order):
     """
     global order_id_counter
 
-    # Validate that the order has at least one line item
-    if not order.line_items:
-        raise HTTPException(status_code=400, detail="Order must have at least one line item.")
+    try:
+        # Validate that the order has at least one line item
+        if not order.line_items:
+            raise HTTPException(status_code=400, detail="Order must have at least one line item.")
 
-    # Assign a unique ID to the order and store it in the in-memory dictionary
-    order_id = order_id_counter
-    orders[order_id] = order
-    order_id_counter += 1
+        # Assign a unique ID to the order and store it in the in-memory dictionary
+        order_id = order_id_counter
+        orders[order_id] = order
+        order_id_counter += 1
 
-    return {"order_id": order_id, "message": "Order created successfully."}
+        return {"order_id": order_id, "message": "Order created successfully."}
+
+    except HTTPException as http_exc:
+        # Handle HTTP exceptions with custom error messages
+        return JSONResponse(status_code=http_exc.status_code, content={"error": http_exc.detail})
+
+    except Exception as exc:
+        # Handle unexpected errors
+        return JSONResponse(status_code=500, content={"error": "An unexpected error occurred.", "details": str(exc)})
