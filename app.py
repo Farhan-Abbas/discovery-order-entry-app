@@ -52,6 +52,29 @@ class Order(BaseModel):
             raise ValueError("Customer name can only contain alphabetic characters and spaces.")
         return value
 
+    @validator("order_items")
+    def validate_order_items(cls, items):
+        if len(items) > 100:
+            raise ValueError("You cannot add more than 100 line items.")
+
+        product_names = set()
+        total_quantity = 0
+
+        for item in items:
+            # Check for duplicate product names
+            if item.product_name in product_names:
+                raise ValueError(f"Duplicate product name detected: '{item.product_name}'.")
+            product_names.add(item.product_name)
+
+            # Accumulate total quantity
+            total_quantity += item.quantity
+
+        # Check total order quantity
+        if total_quantity > 1000000:
+            raise ValueError("The total quantity for the order cannot exceed 1,000,000.")
+
+        return items
+
 # Initialize Jinja2 templates
 templates = Jinja2Templates(directory="templates")
 
