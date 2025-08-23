@@ -41,14 +41,85 @@ document.getElementById("add-order-item").addEventListener("click", function () 
 });
 
 // Event listener for handling form submission using the fetch API
-// This listener prevents the default form submission, converts the form data to JSON,
-// sends it to the server via a POST request, and dynamically updates the page content
-// with the server's response (either success or error HTML).
+// This listener prevents the default form submission, validates the form fields,
+// converts the form data to JSON, sends it to the server via a POST request,
+// and dynamically updates the page content with the server's response (either success or error HTML).
 document.getElementById("order-form").addEventListener("submit", async function (event) {
     event.preventDefault(); // Prevent the default form submission
 
     const form = event.target;
     const formData = new FormData(form);
+
+    // Client-side validation
+    const orderItems = document.getElementsByClassName("order-item");
+    const productNames = new Set();
+    let totalQuantity = 0;
+
+    // Validate maximum number of line items
+    if (orderItems.length > 100) {
+        alert("You cannot add more than 100 line items.");
+        return;
+    }
+
+    // Validate customer name
+    const customerName = formData.get("customer_name").trim();
+    if (!customerName) {
+        alert("Customer name is required.");
+        return;
+    }
+    if (customerName.length > 100) {
+        alert("Customer name cannot exceed 100 characters.");
+        return;
+    }
+    if (!/^[a-zA-Z ]+$/.test(customerName)) {
+        alert("Customer name can only contain alphabetic characters and spaces.");
+        return;
+    }
+
+    for (let i = 0; i < orderItems.length; i++) {
+        const productName = orderItems[i].querySelector("input[name*='[product_name]']").value.trim();
+        const quantity = parseInt(orderItems[i].querySelector("input[name*='[quantity]']").value, 10);
+
+        // Check for empty or whitespace-only product names
+        if (!productName) {
+            alert(`Product name is required for item ${i + 1}.`);
+            return;
+        }
+
+        // Check for duplicate product names
+        if (productNames.has(productName)) {
+            alert(`Duplicate product name detected: "${productName}" for item ${i + 1}.`);
+            return;
+        }
+        productNames.add(productName);
+
+        // Check for character limit on product name
+        if (productName.length > 100) {
+            alert(`Product name for item ${i + 1} cannot exceed 100 characters.`);
+            return;
+        }
+
+        // Check for disallowed characters in product name
+        if (!/^[a-zA-Z0-9 ]+$/.test(productName)) {
+            alert(`Product name for item ${i + 1} can only contain alphanumeric characters and spaces.`);
+            return;
+        }
+
+        // Check for quantity exceeding the maximum limit
+        if (quantity > 1000000) {
+            alert(`Quantity for item ${i + 1} cannot exceed 1,000,000.`);
+            return;
+        }
+
+        // Add to total quantity
+        totalQuantity += quantity;
+    }
+
+    // Validate total order quantity
+    if (totalQuantity > 1000000) {
+        alert("The total quantity for the order cannot exceed 1,000,000.");
+        return;
+    }
 
     // Convert form data to JSON
     const data = {};
