@@ -4,9 +4,19 @@ from typing import List
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
+from fastapi.middleware.cors import CORSMiddleware
 import re
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:5500"],  # Frontend origin
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # In-memory storage for orders
 # This dictionary will store all orders with their unique IDs as keys
@@ -72,33 +82,27 @@ async def create_order(order: Order, request: Request):
         orders[order_id] = order
         order_id_counter += 1
 
-        # Render the confirmation HTML template
-        return templates.TemplateResponse(
-            "confirmation.html",
-            {
-                "request": request,
-                "order_id": order_id,
-                "customer_name": order.customer_name,
-                "order_items": order.order_items,
-            },
-        )
+        # Render the confirmation HTML dynamically
+        return f"""
+        <h1>Order Confirmation</h1>
+        <p>Order ID: {order_id}</p>
+        <p>Customer Name: {order.customer_name}</p>
+        <h3>Order Items:</h3>
+        <ul>
+            {''.join(f'<li>{item.product_name} - Quantity: {item.quantity}</li>' for item in order.order_items)}
+        </ul>
+        """
 
     except HTTPException as http_exc:
-        # Render an error HTML template for HTTP exceptions
-        return templates.TemplateResponse(
-            "error.html",
-            {"request": request, "error_message": http_exc.detail},
+        # Render an error HTML dynamically
+        return HTMLResponse(
+            content=f"<h1>Error</h1><p>{http_exc.detail}</p>",
             status_code=http_exc.status_code,
         )
 
     except Exception as exc:
-        # Render a generic error HTML template for unexpected errors
-        return templates.TemplateResponse(
-            "error.html",
-            {
-                "request": request,
-                "error_message": "An unexpected error occurred.",
-                "details": str(exc),
-            },
+        # Render a generic error HTML dynamically
+        return HTMLResponse(
+            content=f"<h1>Error</h1><p>An unexpected error occurred: {str(exc)}</p>",
             status_code=500,
         )

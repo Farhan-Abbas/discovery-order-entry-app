@@ -1,3 +1,6 @@
+// Event listener for adding a new order item dynamically to the form
+// This listener creates a new set of input fields for product name and quantity
+// and appends them to the order items container when the 'Add Order Item' button is clicked.
 document.getElementById("add-order-item").addEventListener("click", function () {
     const orderItemsContainer = document.getElementById("order-items");
     const orderItemCount = orderItemsContainer.getElementsByClassName("order-item").length;
@@ -35,4 +38,51 @@ document.getElementById("add-order-item").addEventListener("click", function () 
 
     // Append the new order item to the container
     orderItemsContainer.appendChild(newOrderItem);
+});
+
+// Event listener for handling form submission using the fetch API
+// This listener prevents the default form submission, converts the form data to JSON,
+// sends it to the server via a POST request, and dynamically updates the page content
+// with the server's response (either success or error HTML).
+document.getElementById("order-form").addEventListener("submit", async function (event) {
+    event.preventDefault(); // Prevent the default form submission
+
+    const form = event.target;
+    const formData = new FormData(form);
+
+    // Convert form data to JSON
+    const data = {};
+    formData.forEach((value, key) => {
+        const keys = key.split(/\[|\]/).filter(k => k); // Handle nested keys like order_items[0][product_name]
+        let current = data;
+        while (keys.length > 1) {
+            const k = keys.shift();
+            if (!current[k]) current[k] = isNaN(keys[0]) ? {} : [];
+            current = current[k];
+        }
+        current[keys[0]] = value;
+    });
+
+    try {
+        const response = await fetch(form.action, {
+            method: form.method,
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+        });
+
+        const result = await response.text();
+
+        if (!response.ok) {
+            // Display error HTML
+            document.body.innerHTML = result;
+            return;
+        }
+
+        // Display confirmation HTML
+        document.body.innerHTML = result;
+    } catch (error) {
+        document.body.innerHTML = `<h1>Error</h1><p>An unexpected error occurred: ${error.message}</p>`;
+    }
 });
