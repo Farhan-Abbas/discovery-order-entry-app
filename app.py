@@ -16,7 +16,7 @@ orders = {}
 order_id_counter = 1
 
 # Data models
-class LineItem(BaseModel):
+class OrderItem(BaseModel):
     # Represents an individual item in an order
     product_name: str = Field(..., title="Product Name", min_length=1)  # Name of the product (must not be empty)
     quantity: int = Field(..., title="Quantity", gt=0)  # Quantity of the product (must be greater than zero)
@@ -32,7 +32,7 @@ class LineItem(BaseModel):
 class Order(BaseModel):
     # Represents a complete sales order
     customer_name: str = Field(..., title="Customer Name", min_length=1)  # Name of the customer (must not be empty)
-    line_items: List[LineItem]  # List of items included in the order
+    order_items: List[OrderItem]  # List of items included in the order
 
     @validator("customer_name")
     def validate_customer_name(cls, value):
@@ -63,9 +63,9 @@ async def create_order(order: Order, request: Request):
     global order_id_counter
 
     try:
-        # Validate that the order has at least one line item
-        if not order.line_items:
-            raise HTTPException(status_code=400, detail="Order must have at least one line item.")
+        # Validate that the order has at least one order item
+        if not order.order_items:
+            raise HTTPException(status_code=400, detail="Order must have at least one order item.")
 
         # Assign a unique ID to the order and store it in the in-memory dictionary
         order_id = order_id_counter
@@ -79,7 +79,7 @@ async def create_order(order: Order, request: Request):
                 "request": request,
                 "order_id": order_id,
                 "customer_name": order.customer_name,
-                "line_items": order.line_items,
+                "order_items": order.order_items,
             },
         )
 
