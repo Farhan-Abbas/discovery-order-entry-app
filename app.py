@@ -53,11 +53,12 @@ async def root(request: Request):
     """
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.post("/order")
-async def create_order(order: Order):
+@app.post("/order", response_class=HTMLResponse)
+async def create_order(order: Order, request: Request):
     """
     Endpoint to create a new order.
     Validates the input data and stores the order in the in-memory storage.
+    Returns an HTML response for order confirmation or error.
     """
     global order_id_counter
 
@@ -71,12 +72,33 @@ async def create_order(order: Order):
         orders[order_id] = order
         order_id_counter += 1
 
-        return {"order_id": order_id, "message": "Order created successfully."}
+        # Render the confirmation HTML template
+        return templates.TemplateResponse(
+            "confirmation.html",
+            {
+                "request": request,
+                "order_id": order_id,
+                "customer_name": order.customer_name,
+                "line_items": order.line_items,
+            },
+        )
 
     except HTTPException as http_exc:
-        # Handle HTTP exceptions with custom error messages
-        return JSONResponse(status_code=http_exc.status_code, content={"error": http_exc.detail})
+        # Render an error HTML template for HTTP exceptions
+        return templates.TemplateResponse(
+            "error.html",
+            {"request": request, "error_message": http_exc.detail},
+            status_code=http_exc.status_code,
+        )
 
     except Exception as exc:
-        # Handle unexpected errors
-        return JSONResponse(status_code=500, content={"error": "An unexpected error occurred.", "details": str(exc)})
+        # Render a generic error HTML template for unexpected errors
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error_message": "An unexpected error occurred.",
+                "details": str(exc),
+            },
+            status_code=500,
+        )
