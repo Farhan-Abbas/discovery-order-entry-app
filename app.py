@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import List
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
+import re
 
 app = FastAPI()
 
@@ -20,10 +21,26 @@ class LineItem(BaseModel):
     product_name: str = Field(..., title="Product Name", min_length=1)  # Name of the product (must not be empty)
     quantity: int = Field(..., title="Quantity", gt=0)  # Quantity of the product (must be greater than zero)
 
+    @validator("product_name")
+    def validate_product_name(cls, value):
+        if not value.strip():
+            raise ValueError("Product name cannot be empty or whitespace.")
+        if not re.match(r"^[a-zA-Z0-9 ]+$", value):
+            raise ValueError("Product name can only contain alphanumeric characters and spaces.")
+        return value
+
 class Order(BaseModel):
     # Represents a complete sales order
     customer_name: str = Field(..., title="Customer Name", min_length=1)  # Name of the customer (must not be empty)
     line_items: List[LineItem]  # List of items included in the order
+
+    @validator("customer_name")
+    def validate_customer_name(cls, value):
+        if not value.strip():
+            raise ValueError("Customer name cannot be empty or whitespace.")
+        if not re.match(r"^[a-zA-Z ]+$", value):
+            raise ValueError("Customer name can only contain alphabetic characters and spaces.")
+        return value
 
 # Initialize Jinja2 templates
 templates = Jinja2Templates(directory="templates")
