@@ -220,8 +220,5 @@ async def create_order(order: Order, request: Request):
         return generate_error_response(http_exc.detail)
 
     except Exception as exc:
-        # Render a generic error HTML dynamically
-        return HTMLResponse(
-            content=f"<h1>Error</h1><p>An unexpected error occurred: {str(exc)}</p>",
-            status_code=500,
-        )
+        # Use utility function to generate error HTML
+        return generate_error_response(f"An unexpected error occurred: {str(exc)}")
