@@ -27,12 +27,30 @@ order_id_counter = 1
 
 # Data models
 class OrderItem(BaseModel):
-    # Represents an individual item in an order
+    """
+    Represents an individual item in an order.
+
+    Attributes:
+        product_name (str): The name of the product (must not be empty).
+        quantity (int): The quantity of the product (must be greater than zero).
+    """
     product_name: str = Field(..., title="Product Name", min_length=1)  # Name of the product (must not be empty)
     quantity: int = Field(..., title="Quantity", gt=0)  # Quantity of the product (must be greater than zero)
 
     @validator("product_name")
     def validate_product_name(cls, value):
+        """
+        Validate the product name to ensure it is not empty and contains only valid characters.
+
+        Args:
+            value (str): The product name to validate.
+
+        Returns:
+            str: The validated product name.
+
+        Raises:
+            ValueError: If the product name is invalid.
+        """
         if not value.strip():
             raise ValueError("Product name cannot be empty or whitespace.")
         if not re.match(r"^[a-zA-Z0-9 ]+$", value):
@@ -40,12 +58,30 @@ class OrderItem(BaseModel):
         return value
 
 class Order(BaseModel):
-    # Represents a complete sales order
+    """
+    Represents a complete sales order.
+
+    Attributes:
+        customer_name (str): The name of the customer (must not be empty).
+        order_items (List[OrderItem]): A list of items included in the order.
+    """
     customer_name: str = Field(..., title="Customer Name", min_length=1)  # Name of the customer (must not be empty)
     order_items: List[OrderItem]  # List of items included in the order
 
     @validator("customer_name")
     def validate_customer_name(cls, value):
+        """
+        Validate the customer name to ensure it is not empty and contains only valid characters.
+
+        Args:
+            value (str): The customer name to validate.
+
+        Returns:
+            str: The validated customer name.
+
+        Raises:
+            ValueError: If the customer name is invalid.
+        """
         if not value.strip():
             raise ValueError("Customer name cannot be empty or whitespace.")
         if not re.match(r"^[a-zA-Z ]+$", value):
@@ -54,6 +90,18 @@ class Order(BaseModel):
 
     @validator("order_items")
     def validate_order_items(cls, items):
+        """
+        Validate the list of order items to ensure no duplicates and valid quantities.
+
+        Args:
+            items (List[OrderItem]): The list of order items to validate.
+
+        Returns:
+            List[OrderItem]: The validated list of order items.
+
+        Raises:
+            ValueError: If the order items are invalid.
+        """
         if len(items) > 100:
             raise ValueError("You cannot add more than 100 line items.")
 
@@ -78,11 +126,51 @@ class Order(BaseModel):
 # Initialize Jinja2 templates
 templates = Jinja2Templates(directory="templates")
 
+# Utility functions
+def generate_order_confirmation(order_id: int, order: Order) -> str:
+    """
+    Generate an HTML string for order confirmation.
 
+    Args:
+        order_id (int): The unique ID of the order.
+        order (Order): The order object containing customer and item details.
+
+    Returns:
+        str: HTML string for the order confirmation page.
+    """
+    return f"""
+    <h1>Order Confirmation</h1>
+    <p>Order ID: {order_id}</p>
+    <p>Customer Name: {order.customer_name}</p>
+    <h3>Order Items:</h3>
+    <ul>
+        {''.join(f'<li>{item.product_name} - Quantity: {item.quantity}</li>' for item in order.order_items)}
+    </ul>
+    """
+
+def generate_error_response(detail: str) -> HTMLResponse:
+    """
+    Generate an HTML response for errors.
+
+    Args:
+        detail (str): The error message to display.
+
+    Returns:
+        HTMLResponse: HTML response containing the error message.
+    """
+    return HTMLResponse(content=f"<h1>Error</h1><p>{detail}</p>", status_code=400)
+
+# Routes
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     """
     Root endpoint to serve the HTML form for the user.
+
+    Args:
+        request (Request): The incoming HTTP request.
+
+    Returns:
+        TemplateResponse: The rendered HTML form.
     """
     return templates.TemplateResponse("index.html", {"request": request})
 
@@ -92,6 +180,13 @@ async def create_order(order: Order, request: Request):
     Endpoint to create a new order.
     Validates the input data and stores the order in the in-memory storage.
     Returns an HTML response for order confirmation or error.
+
+    Args:
+        order (Order): The order data submitted by the user.
+        request (Request): The incoming HTTP request.
+
+    Returns:
+        HTMLResponse: The HTML response for order confirmation or error.
     """
     global order_id_counter
 
@@ -105,23 +200,12 @@ async def create_order(order: Order, request: Request):
         orders[order_id] = order
         order_id_counter += 1
 
-        # Render the confirmation HTML dynamically
-        return f"""
-        <h1>Order Confirmation</h1>
-        <p>Order ID: {order_id}</p>
-        <p>Customer Name: {order.customer_name}</p>
-        <h3>Order Items:</h3>
-        <ul>
-            {''.join(f'<li>{item.product_name} - Quantity: {item.quantity}</li>' for item in order.order_items)}
-        </ul>
-        """
+        # Use utility function to generate confirmation HTML
+        return generate_order_confirmation(order_id, order)
 
     except HTTPException as http_exc:
-        # Render an error HTML dynamically
-        return HTMLResponse(
-            content=f"<h1>Error</h1><p>{http_exc.detail}</p>",
-            status_code=http_exc.status_code,
-        )
+        # Use utility function to generate error HTML
+        return generate_error_response(http_exc.detail)
 
     except Exception as exc:
         # Render a generic error HTML dynamically
