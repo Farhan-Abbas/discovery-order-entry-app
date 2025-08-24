@@ -12,7 +12,7 @@ document.getElementById("add-order-item").addEventListener("click", function () 
     // Add product name input
     const productNameLabel = document.createElement("label");
     productNameLabel.setAttribute("for", `product-name-${orderItemCount + 1}`);
-    productNameLabel.textContent = "Product Name:";
+    productNameLabel.textContent = `Product Name ${orderItemCount + 1}:`;
     const productNameInput = document.createElement("input");
     productNameInput.setAttribute("type", "text");
     productNameInput.setAttribute("id", `product-name-${orderItemCount + 1}`);
@@ -38,6 +38,19 @@ document.getElementById("add-order-item").addEventListener("click", function () 
 
     // Append the new order item to the container
     orderItemsContainer.appendChild(newOrderItem);
+});
+
+// Event listener for removing the last order item dynamically from the form
+document.getElementById("remove-order-item").addEventListener("click", function () {
+    const orderItemsContainer = document.getElementById("order-items");
+    const orderItems = orderItemsContainer.getElementsByClassName("order-item");
+
+    // Ensure at least one order item remains
+    if (orderItems.length > 1) {
+        orderItemsContainer.removeChild(orderItems[orderItems.length - 1]);
+    } else {
+        alert("At least one order item must remain.");
+    }
 });
 
 // Event listener for handling form submission using the fetch API
@@ -67,8 +80,8 @@ document.getElementById("order-form").addEventListener("submit", async function 
         alert("Customer name is required.");
         return;
     }
-    if (customerName.length > 100) {
-        alert("Customer name cannot exceed 100 characters.");
+    if (customerName.length > 50) {
+        alert("Customer name cannot exceed 50 characters.");
         return;
     }
     if (!/^[a-zA-Z ]+$/.test(customerName)) {
