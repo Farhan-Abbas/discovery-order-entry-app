@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, validator
 from typing import List
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +13,7 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500"],  # Frontend origin
+    allow_origins=["http://127.0.0.1:8000"],  # Frontend origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -123,6 +124,9 @@ class Order(BaseModel):
 
         return items
 
+# Mount static files directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # Initialize Jinja2 templates
 templates = Jinja2Templates(directory="templates")
 
@@ -146,6 +150,7 @@ def generate_order_confirmation(order_id: int, order: Order) -> str:
     <ul>
         {''.join(f'<li>{item.product_name} - Quantity: {item.quantity}</li>' for item in order.order_items)}
     </ul>
+    <button onclick=\"window.location.href='/'\">Create Another Order</button>
     """
 
 def generate_error_response(detail: str) -> HTMLResponse:
@@ -158,7 +163,14 @@ def generate_error_response(detail: str) -> HTMLResponse:
     Returns:
         HTMLResponse: HTML response containing the error message.
     """
-    return HTMLResponse(content=f"<h1>Error</h1><p>{detail}</p>", status_code=400)
+    return HTMLResponse(
+        content=f"""
+        <h1>Error</h1>
+        <p>{detail}</p>
+        <button onclick=\"window.location.href='/'\">Create Another Order</button>
+        """,
+        status_code=400
+    )
 
 # Routes
 @app.get("/", response_class=HTMLResponse)
