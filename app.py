@@ -143,14 +143,16 @@ def generate_order_confirmation(order_id: int, order: Order) -> str:
         str: HTML string for the order confirmation page.
     """
     return f"""
-    <h1>Order Confirmation</h1>
-    <p>Order ID: {order_id}</p>
-    <p>Customer Name: {order.customer_name}</p>
-    <h3>Order Items:</h3>
-    <ul>
-        {''.join(f'<li>{item.product_name} - Quantity: {item.quantity}</li>' for item in order.order_items)}
-    </ul>
-    <button onclick=\"window.location.href='/'\">Create Another Order</button>
+    <div class='order-confirmation-container'>
+        <h1>Order Confirmation</h1>
+        <p>Order ID: {order_id}</p>
+        <p>Customer Name: {order.customer_name}</p>
+        <h3>Order Items:</h3>
+        <ul>
+            {''.join(f'<li>{item.product_name} - Quantity: {item.quantity}</li>' for item in order.order_items)}
+        </ul>
+        <button onclick=\"window.location.href='/'\">Create Another Order</button>
+    </div>
     """
 
 def generate_error_response(detail: str) -> HTMLResponse:
@@ -165,9 +167,11 @@ def generate_error_response(detail: str) -> HTMLResponse:
     """
     return HTMLResponse(
         content=f"""
-        <h1>Error</h1>
-        <p>{detail}</p>
-        <button onclick=\"window.location.href='/'\">Create Another Order</button>
+        <div class='order-confirmation-container'>
+            <h1>Error</h1>
+            <p>{detail}</p>
+            <button onclick=\"window.location.href='/'\">Create Another Order</button>
+        </div>
         """,
         status_code=400
     )

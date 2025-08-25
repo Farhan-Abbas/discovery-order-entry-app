@@ -19,6 +19,7 @@ The following Python packages are required:
 - `uvicorn[standard]==0.35.0`
 - `jinja2==3.1.4`
 - `pydantic==2.9.2`
+- `httpx==0.28.1`
 
 These are listed in the `requirements.txt` file.
 
@@ -84,13 +85,12 @@ http://127.0.0.1:8000
 - **Frontend**: HTML, CSS, and JavaScript provide a lightweight and dynamic user interface, with JavaScript enabling dynamic form submission via the Fetch API for a smooth user experience.
 - **In-Memory Storage**: Orders are stored in a Python dictionary for simplicity. While this avoids the complexity of setting up a database, it means data is lost when the server restarts. For a production system, a database would be necessary.
 - **Validation**: Both client-side and server-side validation are implemented to ensure data integrity and provide immediate feedback to users.
-- **Error Handling**: Informative HTML responses are returned for errors, prioritizing user experience over JSON responses typically used in APIs.
 - **Virtual Environment**: A virtual environment is used to isolate dependencies, ensuring compatibility and preventing conflicts with system-wide Python packages.
 
 ## Design Decisions and Tradeoffs
 - **Dynamic Form**: JavaScript dynamically adds order items, improving usability but requiring careful handling of field names and validation.
 - **Tradeoff of Simplicity**: The use of in-memory storage and HTML-based error handling prioritizes simplicity and user experience for this small-scale project but would need enhancements for scalability and security in production.
-
+- **Feature Enhancements**: I added a remove order item feature for better UX, and considered adding order history viewing but kept it simple per the core requirements.
 
 ## Testing
 

@@ -48,6 +48,7 @@ button {
     border-radius: 4px;
     cursor: pointer;
     margin-right: 10px;
+    margin-top: 20px; /* Added margin to create spacing */
 }
 
 button:hover {
@@ -76,4 +77,22 @@ button:disabled {
 
 .order-item input {
     margin-top: 5px;
+}
+
+.order-confirmation-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    text-align: center;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin: 0 auto;
+}
+
+.order-confirmation-container button {
+    margin-right: 0px;
 }
