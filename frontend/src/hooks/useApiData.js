@@ -8,7 +8,7 @@ const useApiData = () => {
 
   const fetchPredefinedProducts = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/products")
+      const response = await fetch("/api/products")
       if (response.ok) {
         const products = await response.json()
         setPredefinedProducts(products)
@@ -24,7 +24,7 @@ const useApiData = () => {
 
   const fetchExchangeRates = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/exchange-rates")
+      const response = await fetch("/api/exchange-rates")
       if (response.ok) {
         const rates = await response.json()
         setExchangeRates(rates)

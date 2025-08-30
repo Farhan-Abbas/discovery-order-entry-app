@@ -55,7 +55,7 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
   // Function to download PDF
   const handleDownloadPDF = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/orders/${parsedData.orderId}/pdf`)
+      const response = await fetch(`/orders/${parsedData.orderId}/pdf`)
       
       if (response.ok) {
         const blob = await response.blob()
@@ -94,7 +94,7 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
     setEmailLoading(true)
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/orders/${parsedData.orderId}/email?email=${encodeURIComponent(emailAddress)}`,
+        `/orders/${parsedData.orderId}/email?email=${encodeURIComponent(emailAddress)}`,
         { method: 'POST' }
       )
       
