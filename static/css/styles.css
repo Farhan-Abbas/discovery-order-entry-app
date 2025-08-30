@@ -109,3 +109,36 @@ button:disabled {
 .order-confirmation-container button {
     margin-right: 0px;
 }
+
+/* Order confirmation table styling */
+.order-confirmation-container table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 14px;
+}
+
+.order-confirmation-container th,
+.order-confirmation-container td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+}
+
+.order-confirmation-container th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+.order-confirmation-container tfoot td {
+    background-color: #f9f9f9;
+    font-weight: bold;
+}
+
+.order-confirmation-container .text-right {
+    text-align: right;
+}
+
+.order-confirmation-container .text-center {
+    text-align: center;
+}

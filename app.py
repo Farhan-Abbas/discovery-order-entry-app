@@ -7,8 +7,6 @@ from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 import re
-
-import re
 import httpx
 
 app = FastAPI()
@@ -82,9 +80,11 @@ class Order(BaseModel):
     Attributes:
         customer_name (str): The name of the customer (must not be empty).
         order_items (List[OrderItem]): A list of items included in the order.
+        currency (str): The currency used for pricing (default: CAD).
     """
     customer_name: str = Field(..., title="Customer Name", min_length=1)  # Name of the customer (must not be empty)
     order_items: List[OrderItem]  # List of items included in the order
+    currency: str = Field(default="CAD", title="Currency")  # Currency used for pricing
 
     @validator("customer_name")
     def validate_customer_name(cls, value):
@@ -104,6 +104,25 @@ class Order(BaseModel):
             raise ValueError("Customer name cannot be empty or whitespace.")
         if not re.match(r"^[a-zA-Z ]+$", value):
             raise ValueError("Customer name can only contain alphabetic characters and spaces.")
+        return value
+
+    @validator("currency")
+    def validate_currency(cls, value):
+        """
+        Validate the currency to ensure it's supported.
+
+        Args:
+            value (str): The currency code to validate.
+
+        Returns:
+            str: The validated currency code.
+
+        Raises:
+            ValueError: If the currency is not supported.
+        """
+        supported_currencies = ["CAD", "USD", "EUR", "GBP"]
+        if value not in supported_currencies:
+            raise ValueError(f"Currency '{value}' is not supported. Supported currencies: {', '.join(supported_currencies)}")
         return value
 
     @validator("order_items")
@@ -150,7 +169,7 @@ templates = Jinja2Templates(directory="templates")
 # Utility functions
 def generate_order_confirmation(order_id: int, order: Order) -> str:
     """
-    Generate an HTML string for order confirmation.
+    Generate an HTML string for order confirmation with pricing details.
 
     Args:
         order_id (int): The unique ID of the order.
@@ -159,15 +178,65 @@ def generate_order_confirmation(order_id: int, order: Order) -> str:
     Returns:
         str: HTML string for the order confirmation page.
     """
+    # Get exchange rates for currency conversion
+    exchange_rates = {
+        "CAD": 1.0,
+        "USD": 0.75,
+        "EUR": 0.68,
+        "GBP": 0.59
+    }
+    
+    conversion_rate = exchange_rates.get(order.currency, 1.0)
+    
+    # Calculate pricing for each item and total
+    order_items_html = ""
+    total_order_amount = 0
+    
+    for item in order.order_items:
+        # Get base price in CAD
+        base_price = PREDEFINED_PRODUCTS.get(item.product_name, 0)
+        # Convert to order currency
+        unit_price = base_price * conversion_rate
+        line_total = unit_price * item.quantity
+        total_order_amount += line_total
+        
+        order_items_html += f"""
+        <tr>
+            <td>{item.product_name}</td>
+            <td>{item.quantity}</td>
+            <td>{unit_price:.2f} {order.currency}</td>
+            <td>{line_total:.2f} {order.currency}</td>
+        </tr>
+        """
+    
     return f"""
     <div class='order-confirmation-container'>
         <h1>Order Confirmation</h1>
-        <p>Order ID: {order_id}</p>
-        <p>Customer Name: {order.customer_name}</p>
+        <p><strong>Order ID:</strong> {order_id}</p>
+        <p><strong>Customer Name:</strong> {order.customer_name}</p>
+        <p><strong>Currency:</strong> {order.currency}</p>
+        
         <h3>Order Items:</h3>
-        <ul>
-            {''.join(f'<li>{item.product_name} - Quantity: {item.quantity}</li>' for item in order.order_items)}
-        </ul>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+                <tr style="background-color: #f5f5f5;">
+                    <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Product</th>
+                    <th style="border: 1px solid #ddd; padding: 12px; text-align: center;">Quantity</th>
+                    <th style="border: 1px solid #ddd; padding: 12px; text-align: right;">Unit Price</th>
+                    <th style="border: 1px solid #ddd; padding: 12px; text-align: right;">Line Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {order_items_html}
+            </tbody>
+            <tfoot>
+                <tr style="background-color: #f9f9f9; font-weight: bold;">
+                    <td colspan="3" style="border: 1px solid #ddd; padding: 12px; text-align: right;">Total Order Amount:</td>
+                    <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">{total_order_amount:.2f} {order.currency}</td>
+                </tr>
+            </tfoot>
+        </table>
+        
         <button onclick=\"window.location.href='/'\">Create Another Order</button>
     </div>
     """
