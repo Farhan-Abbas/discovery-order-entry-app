@@ -29,13 +29,26 @@ label {
 }
 
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+select {
     width: 100%;
     padding: 8px;
     margin-bottom: 15px;
     border: 1px solid #ccc;
     border-radius: 4px;
     box-sizing: border-box;
+}
+
+.unit-price,
+.net-price {
+    font-weight: bold;
+    color: #007bff;
+}
+
+.currency-label {
+    font-weight: bold;
+    color: #666;
+    margin-left: 5px;
 }
 
 button {

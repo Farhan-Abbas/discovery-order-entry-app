@@ -8,12 +8,29 @@ from fastapi.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 import re
 
+import re
+import httpx
+
 app = FastAPI()
+
+# Predefined products with prices in CAD (base currency)
+PREDEFINED_PRODUCTS = {
+    "Laptop": 1200.00,
+    "Mouse": 25.00,
+    "Keyboard": 75.00,
+    "Monitor": 300.00,
+    "Headphones": 150.00,
+    "Webcam": 80.00,
+    "Smartphone": 800.00,
+    "Tablet": 500.00,
+    "Charger": 30.00,
+    "Speaker": 120.00
+}
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8000"],  # Frontend origin
+    allow_origins=["http://127.0.0.1:8000", "http://127.0.0.1:5500"],  # Frontend origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,7 +58,7 @@ class OrderItem(BaseModel):
     @validator("product_name")
     def validate_product_name(cls, value):
         """
-        Validate the product name to ensure it is not empty and contains only valid characters.
+        Validate the product name to ensure it exists in predefined products.
 
         Args:
             value (str): The product name to validate.
@@ -54,8 +71,8 @@ class OrderItem(BaseModel):
         """
         if not value.strip():
             raise ValueError("Product name cannot be empty or whitespace.")
-        if not re.match(r"^[a-zA-Z0-9 ]+$", value):
-            raise ValueError("Product name can only contain alphanumeric characters and spaces.")
+        if value not in PREDEFINED_PRODUCTS:
+            raise ValueError(f"Product '{value}' is not available. Please select from predefined products.")
         return value
 
 class Order(BaseModel):
@@ -226,3 +243,31 @@ async def create_order(order: Order, request: Request):
     except Exception as exc:
         # Use utility function to generate error HTML
         return generate_error_response(f"An unexpected error occurred: {str(exc)}")
+
+# Endpoint to fetch exchange rates
+@app.get("/api/exchange-rates")
+async def get_exchange_rates():
+    """
+    Return hardcoded exchange rates with CAD as the base currency.
+
+    Returns:
+        JSONResponse: A dictionary of hardcoded exchange rates.
+    """
+    hardcoded_rates = {
+        "CAD": 1.0,
+        "USD": 0.75,
+        "EUR": 0.68,
+        "GBP": 0.59
+    }
+    return JSONResponse(content=hardcoded_rates)
+
+# Endpoint to fetch predefined products
+@app.get("/api/products")
+async def get_products():
+    """
+    Return predefined products with their prices in CAD.
+
+    Returns:
+        JSONResponse: A dictionary of predefined products and their prices.
+    """
+    return JSONResponse(content=PREDEFINED_PRODUCTS)

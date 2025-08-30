@@ -1,6 +1,60 @@
+// Global variables
+let predefinedProducts = {};
+let exchangeRates = {};
+let currentCurrency = "CAD";
+
+// Function to fetch predefined products from the backend
+async function fetchPredefinedProducts() {
+    try {
+        const response = await fetch("http://127.0.0.1:8000/api/products");
+        if (!response.ok) {
+            throw new Error("Failed to fetch predefined products.");
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching predefined products:", error);
+        return null;
+    }
+}
+
+// Function to populate product dropdown
+function populateProductDropdown(selectElement) {
+    // Clear existing options except the first one
+    selectElement.innerHTML = '<option value="">Select a product</option>';
+    
+    // Add predefined products as options
+    Object.keys(predefinedProducts).forEach(productName => {
+        const option = document.createElement("option");
+        option.value = productName;
+        option.textContent = productName;
+        selectElement.appendChild(option);
+    });
+}
+
+// Function to initialize the application
+async function initializeApp() {
+    // Fetch predefined products and exchange rates
+    predefinedProducts = await fetchPredefinedProducts();
+    exchangeRates = await fetchExchangeRates();
+    
+    if (!predefinedProducts) {
+        alert("Failed to load product data.");
+        return;
+    }
+    
+    if (!exchangeRates) {
+        alert("Failed to load exchange rate data.");
+        return;
+    }
+    
+    // Populate the first product dropdown
+    const firstProductSelect = document.getElementById("product-name-1");
+    populateProductDropdown(firstProductSelect);
+}
+
 // Event listener for adding a new order item dynamically to the form
-// This listener creates a new set of input fields for product name, quantity, unit price,
-// and net price, and appends them to the order items container when the 'Add Order Item' button is clicked.
+// This listener creates a new set of input fields for product selection, quantity,
+// unit price display, and net price display, and appends them to the order items container.
 document.getElementById("add-order-item").addEventListener("click", function () {
     const orderItemsContainer = document.getElementById("order-items");
     const orderItemCount = orderItemsContainer.getElementsByClassName("order-item").length;
@@ -9,15 +63,17 @@ document.getElementById("add-order-item").addEventListener("click", function () 
     const newOrderItem = document.createElement("div");
     newOrderItem.classList.add("order-item");
 
-    // Add product name input
+    // Add product selection dropdown
     const productNameLabel = document.createElement("label");
     productNameLabel.setAttribute("for", `product-name-${orderItemCount + 1}`);
-    productNameLabel.textContent = `Product Name ${orderItemCount + 1}:`;
-    const productNameInput = document.createElement("input");
-    productNameInput.setAttribute("type", "text");
-    productNameInput.setAttribute("id", `product-name-${orderItemCount + 1}`);
-    productNameInput.setAttribute("name", `order_items[${orderItemCount}][product_name]`);
-    productNameInput.required = true;
+    productNameLabel.textContent = `Product ${orderItemCount + 1}:`;
+    const productNameSelect = document.createElement("select");
+    productNameSelect.setAttribute("id", `product-name-${orderItemCount + 1}`);
+    productNameSelect.setAttribute("name", `order_items[${orderItemCount}][product_name]`);
+    productNameSelect.required = true;
+    
+    // Populate the dropdown
+    populateProductDropdown(productNameSelect);
 
     // Add quantity input
     const quantityLabel = document.createElement("label");
@@ -30,17 +86,17 @@ document.getElementById("add-order-item").addEventListener("click", function () 
     quantityInput.setAttribute("min", "1");
     quantityInput.required = true;
 
-    // Add unit price input
+    // Add unit price display
     const unitPriceLabel = document.createElement("label");
     unitPriceLabel.setAttribute("for", `unit-price-${orderItemCount + 1}`);
     unitPriceLabel.textContent = "Unit Price:";
-    const unitPriceInput = document.createElement("input");
-    unitPriceInput.setAttribute("type", "number");
-    unitPriceInput.setAttribute("id", `unit-price-${orderItemCount + 1}`);
-    unitPriceInput.setAttribute("name", `order_items[${orderItemCount}][unit_price]`);
-    unitPriceInput.setAttribute("min", "0");
-    unitPriceInput.setAttribute("step", "0.01");
-    unitPriceInput.required = true;
+    const unitPriceSpan = document.createElement("span");
+    unitPriceSpan.setAttribute("id", `unit-price-${orderItemCount + 1}`);
+    unitPriceSpan.classList.add("unit-price");
+    unitPriceSpan.textContent = "0.00";
+    const unitPriceCurrency = document.createElement("span");
+    unitPriceCurrency.classList.add("currency-label");
+    unitPriceCurrency.textContent = currentCurrency;
 
     // Add net price display
     const netPriceLabel = document.createElement("label");
@@ -50,16 +106,23 @@ document.getElementById("add-order-item").addEventListener("click", function () 
     netPriceSpan.setAttribute("id", `net-price-${orderItemCount + 1}`);
     netPriceSpan.classList.add("net-price");
     netPriceSpan.textContent = "0.00";
+    const netPriceCurrency = document.createElement("span");
+    netPriceCurrency.classList.add("currency-label");
+    netPriceCurrency.textContent = currentCurrency;
 
     // Append inputs to the new order item div
     newOrderItem.appendChild(productNameLabel);
-    newOrderItem.appendChild(productNameInput);
+    newOrderItem.appendChild(productNameSelect);
     newOrderItem.appendChild(quantityLabel);
     newOrderItem.appendChild(quantityInput);
     newOrderItem.appendChild(unitPriceLabel);
-    newOrderItem.appendChild(unitPriceInput);
+    newOrderItem.appendChild(unitPriceSpan);
+    newOrderItem.appendChild(document.createTextNode(" "));
+    newOrderItem.appendChild(unitPriceCurrency);
     newOrderItem.appendChild(netPriceLabel);
     newOrderItem.appendChild(netPriceSpan);
+    newOrderItem.appendChild(document.createTextNode(" "));
+    newOrderItem.appendChild(netPriceCurrency);
 
     // Append the new order item to the container
     orderItemsContainer.appendChild(newOrderItem);
@@ -73,6 +136,7 @@ document.getElementById("remove-order-item").addEventListener("click", function 
     // Ensure at least one order item remains
     if (orderItems.length > 1) {
         orderItemsContainer.removeChild(orderItems[orderItems.length - 1]);
+        updateTotalOrderNetPrice(); // Recalculate total after removing item
     } else {
         alert("At least one order item must remain.");
     }
@@ -81,13 +145,29 @@ document.getElementById("remove-order-item").addEventListener("click", function 
 // Function to calculate and update net price for a product
 function updateNetPrice(orderItem) {
     const quantityInput = orderItem.querySelector("input[name*='[quantity]']");
-    const unitPriceInput = orderItem.querySelector("input[name*='[unit_price]']");
+    const productSelect = orderItem.querySelector("select[name*='[product_name]']");
+    const unitPriceSpan = orderItem.querySelector(".unit-price");
     const netPriceSpan = orderItem.querySelector(".net-price");
 
     const quantity = parseFloat(quantityInput.value) || 0;
-    const unitPrice = parseFloat(unitPriceInput.value) || 0;
-    const netPrice = quantity * unitPrice;
+    const selectedProduct = productSelect.value;
+    
+    if (!selectedProduct || !predefinedProducts[selectedProduct]) {
+        unitPriceSpan.textContent = "0.00";
+        netPriceSpan.textContent = "0.00";
+        updateTotalOrderNetPrice();
+        return;
+    }
 
+    // Get the base price in CAD
+    const baseUnitPrice = predefinedProducts[selectedProduct];
+    
+    // Convert to current currency
+    const conversionRate = exchangeRates[currentCurrency] || 1;
+    const convertedUnitPrice = baseUnitPrice * conversionRate;
+    const netPrice = quantity * convertedUnitPrice;
+
+    unitPriceSpan.textContent = convertedUnitPrice.toFixed(2);
     netPriceSpan.textContent = netPrice.toFixed(2);
     updateTotalOrderNetPrice();
 }
@@ -105,13 +185,64 @@ function updateTotalOrderNetPrice() {
     document.getElementById("order-net-price").textContent = totalNetPrice.toFixed(2);
 }
 
-// Update event listeners for quantity and unit price inputs
+// Update event listeners for quantity inputs and product selection
 document.getElementById("order-items").addEventListener("input", function (event) {
     const orderItem = event.target.closest(".order-item");
     if (orderItem) {
         updateNetPrice(orderItem);
     }
 });
+
+// Update event listeners for product selection changes
+document.getElementById("order-items").addEventListener("change", function (event) {
+    const orderItem = event.target.closest(".order-item");
+    if (orderItem && event.target.tagName === "SELECT") {
+        updateNetPrice(orderItem);
+    }
+});
+
+// Function to fetch exchange rates from the backend
+async function fetchExchangeRates() {
+    try {
+        const response = await fetch("http://127.0.0.1:8000/api/exchange-rates"); // Updated URL
+        if (!response.ok) {
+            throw new Error("Failed to fetch exchange rates.");
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching exchange rates:", error);
+        return null;
+    }
+}
+
+// Function to update all prices when currency changes
+async function updateCurrency() {
+    const currency = document.getElementById("currency").value;
+    currentCurrency = currency;
+    
+    if (!exchangeRates || !exchangeRates[currency]) {
+        alert("Unable to fetch exchange rate for the selected currency.");
+        return;
+    }
+
+    // Update currency labels
+    const currencyLabels = document.querySelectorAll(".currency-label");
+    currencyLabels.forEach(label => {
+        label.textContent = currency;
+    });
+    
+    // Update selected currency display
+    document.getElementById("selected-currency").textContent = currency;
+
+    // Recalculate all prices
+    const orderItems = document.getElementsByClassName("order-item");
+    for (let i = 0; i < orderItems.length; i++) {
+        updateNetPrice(orderItems[i]);
+    }
+}
+
+// Event listener for currency selection change
+document.getElementById("currency").addEventListener("change", updateCurrency);
 
 // Event listener for handling form submission using the fetch API
 // This listener prevents the default form submission, validates the form fields,
@@ -150,33 +281,22 @@ document.getElementById("order-form").addEventListener("submit", async function 
     }
 
     for (let i = 0; i < orderItems.length; i++) {
-        const productName = orderItems[i].querySelector("input[name*='[product_name]']").value.trim();
+        const productSelect = orderItems[i].querySelector("select[name*='[product_name]']");
+        const productName = productSelect.value.trim();
         const quantity = parseInt(orderItems[i].querySelector("input[name*='[quantity]']").value, 10);
 
-        // Check for empty or whitespace-only product names
+        // Check for empty product selection
         if (!productName) {
-            alert(`Product name is required for item ${i + 1}.`);
+            alert(`Product selection is required for item ${i + 1}.`);
             return;
         }
 
         // Check for duplicate product names
         if (productNames.has(productName)) {
-            alert(`Duplicate product name detected: "${productName}" for item ${i + 1}.`);
+            alert(`Duplicate product selected: "${productName}" for item ${i + 1}.`);
             return;
         }
         productNames.add(productName);
-
-        // Check for character limit on product name
-        if (productName.length > 100) {
-            alert(`Product name for item ${i + 1} cannot exceed 100 characters.`);
-            return;
-        }
-
-        // Check for disallowed characters in product name
-        if (!/^[a-zA-Z0-9 ]+$/.test(productName)) {
-            alert(`Product name for item ${i + 1} can only contain alphanumeric characters and spaces.`);
-            return;
-        }
 
         // Check for quantity exceeding the maximum limit
         if (quantity > 1000000) {
@@ -230,3 +350,6 @@ document.getElementById("order-form").addEventListener("submit", async function 
         document.body.innerHTML = `<h1>Error</h1><p>An unexpected error occurred: ${error.message}</p>`;
     }
 });
+
+// Initialize the application when the page loads
+document.addEventListener("DOMContentLoaded", initializeApp);
