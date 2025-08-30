@@ -1,6 +1,6 @@
 // Event listener for adding a new order item dynamically to the form
-// This listener creates a new set of input fields for product name and quantity
-// and appends them to the order items container when the 'Add Order Item' button is clicked.
+// This listener creates a new set of input fields for product name, quantity, unit price,
+// and net price, and appends them to the order items container when the 'Add Order Item' button is clicked.
 document.getElementById("add-order-item").addEventListener("click", function () {
     const orderItemsContainer = document.getElementById("order-items");
     const orderItemCount = orderItemsContainer.getElementsByClassName("order-item").length;
@@ -30,11 +30,36 @@ document.getElementById("add-order-item").addEventListener("click", function () 
     quantityInput.setAttribute("min", "1");
     quantityInput.required = true;
 
+    // Add unit price input
+    const unitPriceLabel = document.createElement("label");
+    unitPriceLabel.setAttribute("for", `unit-price-${orderItemCount + 1}`);
+    unitPriceLabel.textContent = "Unit Price:";
+    const unitPriceInput = document.createElement("input");
+    unitPriceInput.setAttribute("type", "number");
+    unitPriceInput.setAttribute("id", `unit-price-${orderItemCount + 1}`);
+    unitPriceInput.setAttribute("name", `order_items[${orderItemCount}][unit_price]`);
+    unitPriceInput.setAttribute("min", "0");
+    unitPriceInput.setAttribute("step", "0.01");
+    unitPriceInput.required = true;
+
+    // Add net price display
+    const netPriceLabel = document.createElement("label");
+    netPriceLabel.setAttribute("for", `net-price-${orderItemCount + 1}`);
+    netPriceLabel.textContent = "Net Price:";
+    const netPriceSpan = document.createElement("span");
+    netPriceSpan.setAttribute("id", `net-price-${orderItemCount + 1}`);
+    netPriceSpan.classList.add("net-price");
+    netPriceSpan.textContent = "0.00";
+
     // Append inputs to the new order item div
     newOrderItem.appendChild(productNameLabel);
     newOrderItem.appendChild(productNameInput);
     newOrderItem.appendChild(quantityLabel);
     newOrderItem.appendChild(quantityInput);
+    newOrderItem.appendChild(unitPriceLabel);
+    newOrderItem.appendChild(unitPriceInput);
+    newOrderItem.appendChild(netPriceLabel);
+    newOrderItem.appendChild(netPriceSpan);
 
     // Append the new order item to the container
     orderItemsContainer.appendChild(newOrderItem);
@@ -50,6 +75,41 @@ document.getElementById("remove-order-item").addEventListener("click", function 
         orderItemsContainer.removeChild(orderItems[orderItems.length - 1]);
     } else {
         alert("At least one order item must remain.");
+    }
+});
+
+// Function to calculate and update net price for a product
+function updateNetPrice(orderItem) {
+    const quantityInput = orderItem.querySelector("input[name*='[quantity]']");
+    const unitPriceInput = orderItem.querySelector("input[name*='[unit_price]']");
+    const netPriceSpan = orderItem.querySelector(".net-price");
+
+    const quantity = parseFloat(quantityInput.value) || 0;
+    const unitPrice = parseFloat(unitPriceInput.value) || 0;
+    const netPrice = quantity * unitPrice;
+
+    netPriceSpan.textContent = netPrice.toFixed(2);
+    updateTotalOrderNetPrice();
+}
+
+// Function to calculate and update total order net price
+function updateTotalOrderNetPrice() {
+    const orderItems = document.getElementsByClassName("order-item");
+    let totalNetPrice = 0;
+
+    for (let i = 0; i < orderItems.length; i++) {
+        const netPriceSpan = orderItems[i].querySelector(".net-price");
+        totalNetPrice += parseFloat(netPriceSpan.textContent) || 0;
+    }
+
+    document.getElementById("order-net-price").textContent = totalNetPrice.toFixed(2);
+}
+
+// Update event listeners for quantity and unit price inputs
+document.getElementById("order-items").addEventListener("input", function (event) {
+    const orderItem = event.target.closest(".order-item");
+    if (orderItem) {
+        updateNetPrice(orderItem);
     }
 });
 
