@@ -1,9 +1,7 @@
 import React from 'react'
-import { Switch, Space, Typography } from 'antd'
+import { Switch, Space } from 'antd'
 import { SunOutlined, MoonOutlined } from '@ant-design/icons'
 import { useTheme } from '../contexts/ThemeContext'
-
-const { Text } = Typography
 
 const ThemeToggle = ({ style = {} }) => {
   const { isDarkMode, toggleTheme } = useTheme()
@@ -35,16 +33,6 @@ const ThemeToggle = ({ style = {} }) => {
             transition: 'color 0.3s ease'
           }} 
         />
-        <Text 
-          style={{ 
-            fontSize: 13, 
-            marginLeft: 8,
-            opacity: 0.8,
-            transition: 'opacity 0.3s ease'
-          }}
-        >
-          {isDarkMode ? 'Dark' : 'Light'}
-        </Text>
       </Space>
     </div>
   )

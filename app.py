@@ -1,13 +1,23 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from pydantic import BaseModel, Field, validator
-from typing import List
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.requests import Request
+from typing import List, Optional
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 import re
+import os
+import tempfile
+from datetime import datetime
+
+# PDF and Email imports
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.utils import ImageReader
+import emails
+from emails.template import JinjaTemplate
 
 # Database imports
 from database import create_db_and_tables, get_session
@@ -95,12 +105,6 @@ def validate_order_items(order_items: List[dict]) -> List[dict]:
         raise ValueError("The total quantity for the order cannot exceed 1,000,000.")
 
     return order_items
-
-# Mount static files directory
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Initialize Jinja2 templates
-templates = Jinja2Templates(directory="templates")
 
 # Utility functions
 def generate_order_confirmation(order: OrderTable) -> str:
@@ -198,22 +202,259 @@ def generate_error_response(detail: str) -> HTMLResponse:
         status_code=400
     )
 
-# Routes
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
+def generate_order_pdf(order: OrderTable) -> str:
     """
-    Root endpoint to serve the HTML form for the user.
-
+    Generate a PDF file for the order confirmation.
+    
     Args:
-        request (Request): The incoming HTTP request.
+        order (OrderTable): The order object containing customer and item details.
+        
+    Returns:
+        str: Path to the generated PDF file.
+    """
+    # Create a temporary file for the PDF
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+    pdf_path = temp_file.name
+    temp_file.close()
+    
+    # Create PDF document
+    doc = SimpleDocTemplate(pdf_path, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    
+    # Get styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        textColor=colors.HexColor('#1890ff'),
+        spaceAfter=30,
+        alignment=1  # Center alignment
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor('#1890ff'),
+        spaceAfter=12
+    )
+    
+    # Get exchange rates for currency conversion
+    exchange_rates = {
+        "CAD": 1.0,
+        "USD": 0.75,
+        "EUR": 0.68,
+        "GBP": 0.59
+    }
+    
+    conversion_rate = exchange_rates.get(order.currency, 1.0)
+    
+    # Build the PDF content
+    content = []
+    
+    # Title
+    content.append(Paragraph("ORDER CONFIRMATION", title_style))
+    content.append(Spacer(1, 12))
+    
+    # Order Information
+    content.append(Paragraph("Order Information", heading_style))
+    order_info = [
+        ['Order ID:', str(order.id)],
+        ['Customer Name:', order.customer_name],
+        ['Currency:', order.currency],
+        ['Order Date:', order.created_at.strftime('%Y-%m-%d %H:%M:%S')],
+    ]
+    
+    order_info_table = Table(order_info, colWidths=[2*inch, 3*inch])
+    order_info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f2ff')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#d9d9d9')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    
+    content.append(order_info_table)
+    content.append(Spacer(1, 20))
+    
+    # Order Items
+    content.append(Paragraph("Order Items", heading_style))
+    
+    # Prepare items data
+    items_data = [['Product', 'Quantity', f'Unit Price ({order.currency})', f'Line Total ({order.currency})']]
+    total_order_amount = 0
+    
+    for item in order.order_items:
+        base_price = PREDEFINED_PRODUCTS.get(item.product_name, 0)
+        unit_price = base_price * conversion_rate
+        line_total = unit_price * item.quantity
+        total_order_amount += line_total
+        
+        items_data.append([
+            item.product_name,
+            str(item.quantity),
+            f'{unit_price:.2f}',
+            f'{line_total:.2f}'
+        ])
+    
+    # Add total row
+    items_data.append(['', '', 'TOTAL:', f'{total_order_amount:.2f}'])
+    
+    # Create items table
+    items_table = Table(items_data, colWidths=[2.5*inch, 1*inch, 1.5*inch, 1.5*inch])
+    items_table.setStyle(TableStyle([
+        # Header row
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1890ff')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        
+        # Data rows
+        ('BACKGROUND', (0, 1), (-1, -2), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -2), colors.black),
+        ('ALIGN', (0, 1), (0, -2), 'LEFT'),  # Product names left-aligned
+        ('ALIGN', (1, 1), (-1, -2), 'CENTER'),  # Numbers center-aligned
+        ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -2), 10),
+        
+        # Total row
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f0f2ff')),
+        ('TEXTCOLOR', (0, -1), (-1, -1), colors.black),
+        ('ALIGN', (0, -1), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, -1), (-1, -1), 11),
+        
+        # Grid
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#d9d9d9')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    
+    content.append(items_table)
+    content.append(Spacer(1, 20))
+    
+    # Footer
+    footer_text = f"<para align=center><font size=8 color='#666666'>Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br/>Order Entry System</font></para>"
+    content.append(Paragraph(footer_text, styles['Normal']))
+    
+    # Build PDF
+    doc.build(content)
+    
+    return pdf_path
+
+def send_order_email(order: OrderTable, pdf_path: str, recipient_email: str) -> bool:
+    """
+    Send order confirmation email with PDF attachment.
+    
+    Args:
+        order (OrderTable): The order object.
+        pdf_path (str): Path to the PDF file.
+        recipient_email (str): Email address to send to.
+        
+    Returns:
+        bool: True if email sent successfully, False otherwise.
+    """
+    try:
+        # Email configuration (using Gmail SMTP for this example)
+        # In production, use environment variables for credentials
+        smtp_config = {
+            'host': 'smtp.gmail.com',
+            'port': 587,
+            'tls': True,
+            'user': os.getenv('EMAIL_USER', 'your-email@gmail.com'),  # Set via environment variable
+            'password': os.getenv('EMAIL_PASSWORD', 'your-app-password')  # Set via environment variable
+        }
+        
+        # Create email template
+        email_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #1890ff; text-align: center;">Order Confirmation</h2>
+                
+                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="color: #1890ff; margin-top: 0;">Order Details</h3>
+                    <p><strong>Order ID:</strong> {order.id}</p>
+                    <p><strong>Customer Name:</strong> {order.customer_name}</p>
+                    <p><strong>Order Date:</strong> {order.created_at.strftime('%Y-%m-%d %H:%M:%S')}</p>
+                    <p><strong>Currency:</strong> {order.currency}</p>
+                </div>
+                
+                <p>Dear {order.customer_name},</p>
+                
+                <p>Thank you for your order! Please find attached a detailed PDF confirmation of your order.</p>
+                
+                <p>If you have any questions about your order, please don't hesitate to contact us.</p>
+                
+                <p style="margin-top: 30px;">
+                    Best regards,<br>
+                    <strong>Order Entry System</strong>
+                </p>
+                
+                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef; color: #6c757d; font-size: 12px;">
+                    This is an automated email. Please do not reply to this message.
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Create and send email
+        message = emails.html(
+            html=email_html,
+            subject=f"Order Confirmation #{order.id} - {order.customer_name}",
+            mail_from=smtp_config['user']
+        )
+        
+        # Attach PDF
+        with open(pdf_path, 'rb') as pdf_file:
+            message.attach(
+                data=pdf_file.read(),
+                filename=f"order_confirmation_{order.id}.pdf",
+                content_type="application/pdf"
+            )
+        
+        # Send email
+        response = message.send(
+            to=recipient_email,
+            smtp=smtp_config
+        )
+        
+        return response.status_code == 250
+        
+    except Exception as e:
+        print(f"Failed to send email: {str(e)}")
+        return False
+
+# Routes
+@app.get("/")
+async def root():
+    """
+    Root endpoint to provide API information.
 
     Returns:
-        TemplateResponse: The rendered HTML form.
+        dict: API information and status.
     """
-    return templates.TemplateResponse("index.html", {"request": request})
+    return {
+        "message": "Order Entry API", 
+        "status": "running",
+        "frontend": "React app running on http://localhost:5173",
+        "docs": "/docs"
+    }
 
 @app.post("/order", response_class=HTMLResponse)
-async def create_order(order_data: OrderCreate, request: Request, session: Session = Depends(get_session)):
+async def create_order(order_data: OrderCreate, session: Session = Depends(get_session)):
     """
     Endpoint to create a new order.
     Validates the input data and stores the order in the database.
@@ -221,7 +462,6 @@ async def create_order(order_data: OrderCreate, request: Request, session: Sessi
 
     Args:
         order_data (OrderCreate): The order data submitted by the user.
-        request (Request): The incoming HTTP request.
         session (Session): Database session.
 
     Returns:
@@ -332,3 +572,96 @@ async def get_products():
         JSONResponse: A dictionary of predefined products and their prices.
     """
     return JSONResponse(content=PREDEFINED_PRODUCTS)
+
+# PDF and Email endpoints
+@app.get("/orders/{order_id}/pdf")
+async def download_order_pdf(order_id: int, session: Session = Depends(get_session)):
+    """
+    Generate and download PDF for a specific order.
+    
+    Args:
+        order_id (int): The ID of the order.
+        session (Session): Database session.
+        
+    Returns:
+        FileResponse: PDF file download.
+    """
+    # Get order from database
+    order = session.get(OrderTable, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    try:
+        # Generate PDF
+        pdf_path = generate_order_pdf(order)
+        
+        # Return file response
+        return FileResponse(
+            path=pdf_path,
+            filename=f"order_confirmation_{order_id}.pdf",
+            media_type="application/pdf",
+            background=lambda: os.unlink(pdf_path) if os.path.exists(pdf_path) else None
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
+
+@app.post("/orders/{order_id}/email")
+async def email_order_confirmation(
+    order_id: int, 
+    email: str = Query(..., description="Email address to send the confirmation to"),
+    session: Session = Depends(get_session)
+):
+    """
+    Email order confirmation with PDF attachment.
+    
+    Args:
+        order_id (int): The ID of the order.
+        email (str): Email address to send to.
+        session (Session): Database session.
+        
+    Returns:
+        JSONResponse: Success or error message.
+    """
+    # Validate email format
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, email):
+        raise HTTPException(status_code=400, detail="Invalid email address format")
+    
+    # Get order from database
+    order = session.get(OrderTable, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    try:
+        # Generate PDF
+        pdf_path = generate_order_pdf(order)
+        
+        # Send email
+        email_sent = send_order_email(order, pdf_path, email)
+        
+        # Clean up PDF file
+        if os.path.exists(pdf_path):
+            os.unlink(pdf_path)
+        
+        if email_sent:
+            return JSONResponse(
+                content={
+                    "message": f"Order confirmation emailed successfully to {email}",
+                    "order_id": order_id,
+                    "email": email
+                }
+            )
+        else:
+            raise HTTPException(
+                status_code=500, 
+                detail="Failed to send email. Please check email configuration."
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Clean up PDF file in case of error
+        if 'pdf_path' in locals() and os.path.exists(pdf_path):
+            os.unlink(pdf_path)
+        raise HTTPException(status_code=500, detail=f"Failed to process request: {str(e)}")

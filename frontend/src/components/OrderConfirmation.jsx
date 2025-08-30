@@ -1,12 +1,16 @@
-import React from 'react'
-import { Card, Table, Typography, Button, Space, Divider } from 'antd'
-import { CheckCircleOutlined, ShoppingOutlined, HomeOutlined } from '@ant-design/icons'
+import React, { useState } from 'react'
+import { Card, Table, Typography, Button, Space, Divider, Input, message, Modal } from 'antd'
+import { CheckCircleOutlined, ShoppingOutlined, HomeOutlined, DownloadOutlined, MailOutlined } from '@ant-design/icons'
 import { useTheme } from '../contexts/ThemeContext'
 
 const { Title, Text } = Typography
 
 const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
   const { isDarkMode } = useTheme()
+  const [emailModalVisible, setEmailModalVisible] = useState(false)
+  const [emailAddress, setEmailAddress] = useState('')
+  const [emailLoading, setEmailLoading] = useState(false)
+  
   // Parse the HTML response to extract order data
   const parseOrderData = (htmlString) => {
     const parser = new DOMParser()
@@ -45,6 +49,69 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
       orderDate: orderDateMatch ? orderDateMatch[1].trim() : 'N/A',
       orderItems,
       totalAmount: totalMatch ? totalMatch[1].trim() : 'N/A'
+    }
+  }
+
+  // Function to download PDF
+  const handleDownloadPDF = async () => {
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/orders/${parsedData.orderId}/pdf`)
+      
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `order_confirmation_${parsedData.orderId}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+        message.success('PDF downloaded successfully!')
+      } else {
+        message.error('Failed to download PDF')
+      }
+    } catch (error) {
+      console.error('Error downloading PDF:', error)
+      message.error('Error downloading PDF')
+    }
+  }
+
+  // Function to send email
+  const handleSendEmail = async () => {
+    if (!emailAddress) {
+      message.error('Please enter an email address')
+      return
+    }
+
+    // Validate email format
+    const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+    if (!emailPattern.test(emailAddress)) {
+      message.error('Please enter a valid email address')
+      return
+    }
+
+    setEmailLoading(true)
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/orders/${parsedData.orderId}/email?email=${encodeURIComponent(emailAddress)}`,
+        { method: 'POST' }
+      )
+      
+      if (response.ok) {
+        const result = await response.json()
+        message.success(`Order confirmation sent to ${emailAddress}`)
+        setEmailModalVisible(false)
+        setEmailAddress('')
+      } else {
+        const error = await response.json()
+        message.error(error.detail || 'Failed to send email')
+      }
+    } catch (error) {
+      console.error('Error sending email:', error)
+      message.error('Error sending email')
+    } finally {
+      setEmailLoading(false)
     }
   }
 
@@ -210,24 +277,85 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
 
           {/* Action Buttons */}
           <div style={{ textAlign: 'center', marginTop: 24 }}>
-            <Button 
-              type="primary" 
-              size="default"
-              icon={<HomeOutlined />}
-              onClick={onCreateAnotherOrder}
-              style={{ 
-                minWidth: 180,
-                height: 40,
-                fontSize: 14,
-                fontWeight: 600,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                border: 'none',
-                boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
-              }}
-            >
-              Create Another Order
-            </Button>
+            <Space size="middle" wrap>
+              <Button 
+                type="default" 
+                size="default"
+                icon={<DownloadOutlined />}
+                onClick={handleDownloadPDF}
+                style={{ 
+                  minWidth: 140,
+                  height: 40,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: isDarkMode ? '#1890ff' : '#f0f2ff',
+                  borderColor: '#1890ff',
+                  color: isDarkMode ? '#ffffff' : '#1890ff'
+                }}
+              >
+                Download PDF
+              </Button>
+              
+              <Button 
+                type="default" 
+                size="default"
+                icon={<MailOutlined />}
+                onClick={() => setEmailModalVisible(true)}
+                style={{ 
+                  minWidth: 140,
+                  height: 40,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: isDarkMode ? '#52c41a' : '#f6ffed',
+                  borderColor: '#52c41a',
+                  color: isDarkMode ? '#ffffff' : '#52c41a'
+                }}
+              >
+                Email PDF
+              </Button>
+              
+              <Button 
+                type="primary" 
+                size="default"
+                icon={<HomeOutlined />}
+                onClick={onCreateAnotherOrder}
+                style={{ 
+                  minWidth: 180,
+                  height: 40,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                }}
+              >
+                Create Another Order
+              </Button>
+            </Space>
           </div>
+
+          {/* Email Modal */}
+          <Modal
+            title="Email Order Confirmation"
+            open={emailModalVisible}
+            onOk={handleSendEmail}
+            onCancel={() => {
+              setEmailModalVisible(false)
+              setEmailAddress('')
+            }}
+            confirmLoading={emailLoading}
+            okText="Send Email"
+            cancelText="Cancel"
+          >
+            <p>Enter the email address where you'd like to send the order confirmation PDF:</p>
+            <Input
+              placeholder="Enter email address"
+              value={emailAddress}
+              onChange={(e) => setEmailAddress(e.target.value)}
+              onPressEnter={handleSendEmail}
+              style={{ marginTop: 8 }}
+            />
+          </Modal>
         </Card>
       </div>
     </div>
