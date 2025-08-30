@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, Field, validator
 from typing import List
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -6,10 +6,19 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session, select
 import re
-import httpx
+
+# Database imports
+from database import create_db_and_tables, get_session
+from models import OrderTable, OrderItemTable, OrderCreate, OrderRead
 
 app = FastAPI()
+
+# Create database tables on startup
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
 
 # Predefined products with prices in CAD (base currency)
 PREDEFINED_PRODUCTS = {
@@ -34,131 +43,58 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage for orders
-# This dictionary will store all orders with their unique IDs as keys
-orders = {}
+# Data validation functions
+def validate_product_name(product_name: str) -> str:
+    """Validate product name"""
+    if not product_name.strip():
+        raise ValueError("Product name cannot be empty or whitespace.")
+    if product_name not in PREDEFINED_PRODUCTS:
+        raise ValueError(f"Product '{product_name}' is not available. Please select from predefined products.")
+    return product_name
 
-# Counter to generate unique order IDs
-order_id_counter = 1
+def validate_customer_name(customer_name: str) -> str:
+    """Validate customer name"""
+    if not customer_name.strip():
+        raise ValueError("Customer name cannot be empty or whitespace.")
+    if not re.match(r"^[a-zA-Z ]+$", customer_name):
+        raise ValueError("Customer name can only contain alphabetic characters and spaces.")
+    return customer_name
 
-# Data models
-class OrderItem(BaseModel):
-    """
-    Represents an individual item in an order.
+def validate_currency(currency: str) -> str:
+    """Validate currency"""
+    supported_currencies = ["CAD", "USD", "EUR", "GBP"]
+    if currency not in supported_currencies:
+        raise ValueError(f"Currency '{currency}' is not supported. Supported currencies: {', '.join(supported_currencies)}")
+    return currency
 
-    Attributes:
-        product_name (str): The name of the product (must not be empty).
-        quantity (int): The quantity of the product (must be greater than zero).
-    """
-    product_name: str = Field(..., title="Product Name", min_length=1)  # Name of the product (must not be empty)
-    quantity: int = Field(..., title="Quantity", gt=0)  # Quantity of the product (must be greater than zero)
+def validate_order_items(order_items: List[dict]) -> List[dict]:
+    """Validate order items"""
+    if len(order_items) > 100:
+        raise ValueError("You cannot add more than 100 line items.")
 
-    @validator("product_name")
-    def validate_product_name(cls, value):
-        """
-        Validate the product name to ensure it exists in predefined products.
+    product_names = set()
+    total_quantity = 0
 
-        Args:
-            value (str): The product name to validate.
+    for item in order_items:
+        product_name = item.get("product_name", "")
+        quantity = item.get("quantity", 0)
+        
+        # Validate product name
+        validate_product_name(product_name)
+        
+        # Check for duplicate product names
+        if product_name in product_names:
+            raise ValueError(f"Duplicate product name detected: '{product_name}'.")
+        product_names.add(product_name)
 
-        Returns:
-            str: The validated product name.
+        # Accumulate total quantity
+        total_quantity += quantity
 
-        Raises:
-            ValueError: If the product name is invalid.
-        """
-        if not value.strip():
-            raise ValueError("Product name cannot be empty or whitespace.")
-        if value not in PREDEFINED_PRODUCTS:
-            raise ValueError(f"Product '{value}' is not available. Please select from predefined products.")
-        return value
+    # Check total order quantity
+    if total_quantity > 1000000:
+        raise ValueError("The total quantity for the order cannot exceed 1,000,000.")
 
-class Order(BaseModel):
-    """
-    Represents a complete sales order.
-
-    Attributes:
-        customer_name (str): The name of the customer (must not be empty).
-        order_items (List[OrderItem]): A list of items included in the order.
-        currency (str): The currency used for pricing (default: CAD).
-    """
-    customer_name: str = Field(..., title="Customer Name", min_length=1)  # Name of the customer (must not be empty)
-    order_items: List[OrderItem]  # List of items included in the order
-    currency: str = Field(default="CAD", title="Currency")  # Currency used for pricing
-
-    @validator("customer_name")
-    def validate_customer_name(cls, value):
-        """
-        Validate the customer name to ensure it is not empty and contains only valid characters.
-
-        Args:
-            value (str): The customer name to validate.
-
-        Returns:
-            str: The validated customer name.
-
-        Raises:
-            ValueError: If the customer name is invalid.
-        """
-        if not value.strip():
-            raise ValueError("Customer name cannot be empty or whitespace.")
-        if not re.match(r"^[a-zA-Z ]+$", value):
-            raise ValueError("Customer name can only contain alphabetic characters and spaces.")
-        return value
-
-    @validator("currency")
-    def validate_currency(cls, value):
-        """
-        Validate the currency to ensure it's supported.
-
-        Args:
-            value (str): The currency code to validate.
-
-        Returns:
-            str: The validated currency code.
-
-        Raises:
-            ValueError: If the currency is not supported.
-        """
-        supported_currencies = ["CAD", "USD", "EUR", "GBP"]
-        if value not in supported_currencies:
-            raise ValueError(f"Currency '{value}' is not supported. Supported currencies: {', '.join(supported_currencies)}")
-        return value
-
-    @validator("order_items")
-    def validate_order_items(cls, items):
-        """
-        Validate the list of order items to ensure no duplicates and valid quantities.
-
-        Args:
-            items (List[OrderItem]): The list of order items to validate.
-
-        Returns:
-            List[OrderItem]: The validated list of order items.
-
-        Raises:
-            ValueError: If the order items are invalid.
-        """
-        if len(items) > 100:
-            raise ValueError("You cannot add more than 100 line items.")
-
-        product_names = set()
-        total_quantity = 0
-
-        for item in items:
-            # Check for duplicate product names
-            if item.product_name in product_names:
-                raise ValueError(f"Duplicate product name detected: '{item.product_name}'.")
-            product_names.add(item.product_name)
-
-            # Accumulate total quantity
-            total_quantity += item.quantity
-
-        # Check total order quantity
-        if total_quantity > 1000000:
-            raise ValueError("The total quantity for the order cannot exceed 1,000,000.")
-
-        return items
+    return order_items
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -167,13 +103,12 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # Utility functions
-def generate_order_confirmation(order_id: int, order: Order) -> str:
+def generate_order_confirmation(order: OrderTable) -> str:
     """
     Generate an HTML string for order confirmation with pricing details.
 
     Args:
-        order_id (int): The unique ID of the order.
-        order (Order): The order object containing customer and item details.
+        order (OrderTable): The order object containing customer and item details.
 
     Returns:
         str: HTML string for the order confirmation page.
@@ -212,9 +147,10 @@ def generate_order_confirmation(order_id: int, order: Order) -> str:
     return f"""
     <div class='order-confirmation-container'>
         <h1>Order Confirmation</h1>
-        <p><strong>Order ID:</strong> {order_id}</p>
+        <p><strong>Order ID:</strong> {order.id}</p>
         <p><strong>Customer Name:</strong> {order.customer_name}</p>
         <p><strong>Currency:</strong> {order.currency}</p>
+        <p><strong>Order Date:</strong> {order.created_at.strftime('%Y-%m-%d %H:%M:%S')}</p>
         
         <h3>Order Items:</h3>
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
@@ -277,41 +213,97 @@ async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/order", response_class=HTMLResponse)
-async def create_order(order: Order, request: Request):
+async def create_order(order_data: OrderCreate, request: Request, session: Session = Depends(get_session)):
     """
     Endpoint to create a new order.
-    Validates the input data and stores the order in the in-memory storage.
+    Validates the input data and stores the order in the database.
     Returns an HTML response for order confirmation or error.
 
     Args:
-        order (Order): The order data submitted by the user.
+        order_data (OrderCreate): The order data submitted by the user.
         request (Request): The incoming HTTP request.
+        session (Session): Database session.
 
     Returns:
         HTMLResponse: The HTML response for order confirmation or error.
     """
-    global order_id_counter
-
     try:
+        # Validate input data
+        validate_customer_name(order_data.customer_name)
+        validate_currency(order_data.currency)
+        
+        # Convert order items to dict format for validation
+        order_items_dict = [{"product_name": item.product_name, "quantity": item.quantity} for item in order_data.order_items]
+        validate_order_items(order_items_dict)
+
         # Validate that the order has at least one order item
-        if not order.order_items:
+        if not order_data.order_items:
             raise HTTPException(status_code=400, detail="Order must have at least one order item.")
 
-        # Assign a unique ID to the order and store it in the in-memory dictionary
-        order_id = order_id_counter
-        orders[order_id] = order
-        order_id_counter += 1
+        # Create order in database
+        db_order = OrderTable(
+            customer_name=order_data.customer_name,
+            currency=order_data.currency
+        )
+        session.add(db_order)
+        session.flush()  # Flush to get the order ID
+
+        # Create order items
+        for item_data in order_data.order_items:
+            db_order_item = OrderItemTable(
+                product_name=item_data.product_name,
+                quantity=item_data.quantity,
+                order_id=db_order.id
+            )
+            session.add(db_order_item)
+
+        session.commit()
+        session.refresh(db_order)
 
         # Use utility function to generate confirmation HTML
-        return generate_order_confirmation(order_id, order)
+        return HTMLResponse(content=generate_order_confirmation(db_order))
 
     except HTTPException as http_exc:
+        session.rollback()
         # Use utility function to generate error HTML
         return generate_error_response(http_exc.detail)
 
     except Exception as exc:
+        session.rollback()
         # Use utility function to generate error HTML
         return generate_error_response(f"An unexpected error occurred: {str(exc)}")
+
+@app.get("/orders", response_model=List[OrderRead])
+async def get_orders(session: Session = Depends(get_session)):
+    """
+    Endpoint to retrieve all orders from the database.
+    
+    Args:
+        session (Session): Database session.
+    
+    Returns:
+        List[OrderRead]: List of all orders with their items.
+    """
+    statement = select(OrderTable)
+    orders = session.exec(statement).all()
+    return orders
+
+@app.get("/orders/{order_id}", response_model=OrderRead)
+async def get_order(order_id: int, session: Session = Depends(get_session)):
+    """
+    Endpoint to retrieve a specific order from the database.
+    
+    Args:
+        order_id (int): The ID of the order to retrieve.
+        session (Session): Database session.
+    
+    Returns:
+        OrderRead: The requested order with its items.
+    """
+    order = session.get(OrderTable, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
 
 # Endpoint to fetch exchange rates
 @app.get("/api/exchange-rates")
