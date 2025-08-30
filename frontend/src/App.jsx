@@ -59,14 +59,15 @@ function App() {
     calculateTotalPrice,
     handleSubmit,
     isSubmitting,
-    submitError
+    submitError,
+    resetForm
   } = useOrderManagement(predefinedProducts, exchangeRates, setShowOrderConfirmation, setOrderConfirmationData)
 
   // Function to handle creating another order
   const handleCreateAnotherOrder = () => {
     setShowOrderConfirmation(false)
     setOrderConfirmationData(null)
-    // Reset form state if needed
+    resetForm() // Clear all form fields
   }
 
   // Show order confirmation if order was submitted successfully
@@ -87,13 +88,18 @@ function App() {
       <ConfigProvider theme={theme}>
         <Layout style={{ minHeight: '100vh' }}>
           <Content style={{ 
-            padding: '50px', 
+            padding: '16px', 
             display: 'flex', 
             justifyContent: 'center', 
             alignItems: 'center',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
           }}>
-            <Card style={{ textAlign: 'center', minWidth: 300 }}>
+            <Card style={{ 
+              textAlign: 'center', 
+              margin: '0 auto',
+              width: '100%',
+              maxWidth: 400
+            }}>
               <Spin size="large" />
               <div style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
                 Loading products and exchange rates...
@@ -112,23 +118,24 @@ function App() {
         <Layout style={{ minHeight: '100vh' }}>
           <Header style={{ 
             background: '#fff', 
-            padding: '0 50px', 
+            padding: '0 16px', 
             boxShadow: '0 2px 8px #f0f1f2',
             borderBottom: '1px solid #e8e8e8'
           }}>
-            <Title level={2} style={{ 
+            <Title level={3} style={{ 
               margin: '16px 0', 
               color: '#1890ff',
-              fontWeight: 600
+              fontWeight: 600,
+              fontSize: '18px'
             }}>
               📋 Enterprise Order Entry System
             </Title>
           </Header>
           <Content style={{ 
-            padding: '50px',
+            padding: '16px',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
           }}>
-            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <div style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
               <Alert
                 message="Failed to Load Application Data"
                 description={error}
@@ -159,32 +166,33 @@ function App() {
       <Layout style={{ minHeight: '100vh' }}>
         <Header style={{ 
           background: '#fff', 
-          padding: '0 50px', 
+          padding: '0 16px', 
           boxShadow: '0 2px 8px #f0f1f2',
           borderBottom: '1px solid #e8e8e8'
         }}>
-          <Title level={2} style={{ 
+          <Title level={3} style={{ 
             margin: '16px 0', 
             color: '#1890ff',
-            fontWeight: 600
+            fontWeight: 600,
+            fontSize: '18px'
           }}>
             📋 Enterprise Order Entry System
           </Title>
         </Header>
         
         <Content style={{ 
-          padding: '50px', 
+          padding: '16px', 
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           minHeight: 'calc(100vh - 64px)'
         }}>
-          <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
             {submitError && (
               <Alert
                 message="Order Submission Error"
                 description={submitError}
                 type="error"
                 showIcon
-                style={{ marginBottom: 24 }}
+                style={{ marginBottom: 16 }}
                 closable
               />
             )}
@@ -231,16 +239,16 @@ function App() {
                   currency={currency} 
                 />
 
-                <div style={{ marginTop: 32, textAlign: 'center' }}>
+                <div style={{ marginTop: 24, textAlign: 'center' }}>
                   <Button 
                     type="primary" 
                     htmlType="submit" 
-                    size="large"
+                    size="default"
                     loading={isSubmitting}
                     style={{ 
-                      minWidth: 240,
-                      height: 48,
-                      fontSize: 16,
+                      minWidth: 200,
+                      height: 44,
+                      fontSize: 14,
                       fontWeight: 600,
                       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       border: 'none',

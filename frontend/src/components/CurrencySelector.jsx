@@ -13,11 +13,12 @@ const CurrencySelector = ({ currency, setCurrency }) => {
   ]
 
   return (
-    <Form.Item label="Currency">
-      <Select
-        size="large"
-        value={currency}
-        onChange={setCurrency}
+    <div style={{ marginTop: 24 }}>
+      <Form.Item label="Currency">
+        <Select
+          size="large"
+          value={currency}
+          onChange={setCurrency}
         suffixIcon={<DollarOutlined />}
       >
         {currencies.map(curr => (
@@ -27,6 +28,7 @@ const CurrencySelector = ({ currency, setCurrency }) => {
         ))}
       </Select>
     </Form.Item>
+    </div>
   )
 }
 

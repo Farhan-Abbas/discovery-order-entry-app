@@ -134,6 +134,15 @@ const useOrderManagement = (predefinedProducts, exchangeRates, setShowOrderConfi
     }
   }
 
+  // Reset form to initial state
+  const resetForm = () => {
+    setCustomerName('')
+    setCurrency('CAD')
+    setOrderItems([{ productName: '', quantity: 1 }])
+    setIsSubmitting(false)
+    setSubmitError(null)
+  }
+
   return {
     customerName,
     setCustomerName,
@@ -147,7 +156,8 @@ const useOrderManagement = (predefinedProducts, exchangeRates, setShowOrderConfi
     calculateTotalPrice,
     handleSubmit,
     isSubmitting,
-    submitError
+    submitError,
+    resetForm
   }
 }
 

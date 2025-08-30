@@ -17,9 +17,9 @@ const OrderItems = ({
   return (
     <Card 
       title={<Title level={4} style={{ margin: 0 }}>Order Items</Title>}
-      style={{ marginTop: 24 }}
+      style={{ marginTop: 16 }}
     >
-      <Space direction="vertical" style={{ width: '100%' }} size="large">
+      <Space direction="vertical" style={{ width: '100%' }} size="middle">
         {orderItems.map((item, index) => (
           <OrderItem
             key={index}
@@ -32,12 +32,12 @@ const OrderItems = ({
           />
         ))}
         
-        <Space style={{ marginTop: 16 }}>
+        <Space style={{ marginTop: 12, width: '100%', justifyContent: 'center' }} wrap>
           <Button 
             type="dashed" 
             icon={<PlusOutlined />} 
             onClick={addOrderItem}
-            size="large"
+            size="default"
           >
             Add Item
           </Button>
@@ -45,7 +45,7 @@ const OrderItems = ({
             icon={<MinusOutlined />} 
             onClick={removeLastOrderItem}
             disabled={orderItems.length <= 1}
-            size="large"
+            size="default"
           >
             Remove Last Item
           </Button>

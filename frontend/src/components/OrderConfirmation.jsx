@@ -85,30 +85,30 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
 
   return (
     <div style={{ 
-      padding: '50px', 
+      padding: '16px', 
       background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
       minHeight: '100vh'
     }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', width: '100%' }}>
         <Card
           style={{ 
             boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
             borderRadius: 12,
-            marginBottom: 24
+            marginBottom: 16
           }}
         >
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
             <CheckCircleOutlined 
               style={{ 
-                fontSize: 64, 
+                fontSize: 48, 
                 color: '#52c41a', 
-                marginBottom: 16 
+                marginBottom: 12 
               }} 
             />
-            <Title level={1} style={{ color: '#52c41a', marginBottom: 8 }}>
+            <Title level={2} style={{ color: '#52c41a', marginBottom: 8, fontSize: '24px' }}>
               Order Confirmed!
             </Title>
-            <Text type="secondary" style={{ fontSize: 16 }}>
+            <Text type="secondary" style={{ fontSize: 14 }}>
               Your order has been successfully submitted and processed.
             </Text>
           </div>
@@ -116,41 +116,41 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
           <Divider />
 
           {/* Order Details Section */}
-          <div style={{ marginBottom: 32 }}>
-            <Title level={3} style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 24 }}>
+            <Title level={4} style={{ marginBottom: 16 }}>
               📋 Order Details
             </Title>
             
             <div style={{ 
               background: '#f6ffed', 
-              padding: 20, 
+              padding: 16, 
               borderRadius: 8,
               border: '1px solid #b7eb8f'
             }}>
               <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                   <Text strong>Order ID:</Text>
-                  <Text code style={{ fontSize: 16 }}>{parsedData.orderId}</Text>
+                  <Text code style={{ fontSize: 14 }}>{parsedData.orderId}</Text>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                   <Text strong>Customer Name:</Text>
                   <Text>{parsedData.customerName}</Text>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                   <Text strong>Currency:</Text>
                   <Text>{parsedData.currency}</Text>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                   <Text strong>Order Date:</Text>
-                  <Text>{parsedData.orderDate}</Text>
+                  <Text style={{ fontSize: 13 }}>{parsedData.orderDate}</Text>
                 </div>
               </Space>
             </div>
           </div>
 
           {/* Order Items Table */}
-          <div style={{ marginBottom: 32 }}>
-            <Title level={3} style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 24 }}>
+            <Title level={4} style={{ marginBottom: 16 }}>
               🛒 Order Items
             </Title>
             
@@ -158,19 +158,21 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
               columns={columns}
               dataSource={parsedData.orderItems}
               pagination={false}
+              scroll={{ x: 'max-content' }}
               summary={() => (
                 <Table.Summary.Row style={{ background: '#f6ffed' }}>
                   <Table.Summary.Cell colSpan={3}>
-                    <Text strong style={{ fontSize: 16 }}>Total Order Amount:</Text>
+                    <Text strong style={{ fontSize: 14 }}>Total Order Amount:</Text>
                   </Table.Summary.Cell>
                   <Table.Summary.Cell align="right">
-                    <Text strong style={{ fontSize: 18, color: '#52c41a' }}>
+                    <Text strong style={{ fontSize: 16, color: '#52c41a' }}>
                       {parsedData.totalAmount}
                     </Text>
                   </Table.Summary.Cell>
                 </Table.Summary.Row>
               )}
               bordered
+              size="small"
               style={{ 
                 borderRadius: 8,
                 overflow: 'hidden'
@@ -179,16 +181,16 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
           </div>
 
           {/* Action Buttons */}
-          <div style={{ textAlign: 'center', marginTop: 32 }}>
+          <div style={{ textAlign: 'center', marginTop: 24 }}>
             <Button 
               type="primary" 
-              size="large"
+              size="default"
               icon={<HomeOutlined />}
               onClick={onCreateAnotherOrder}
               style={{ 
-                minWidth: 200,
-                height: 48,
-                fontSize: 16,
+                minWidth: 180,
+                height: 40,
+                fontSize: 14,
                 fontWeight: 600,
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 border: 'none',
