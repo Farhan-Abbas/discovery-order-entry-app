@@ -1,8 +1,12 @@
 import React from 'react'
+import { Row, Col, Form, Select, InputNumber, Statistic, Card } from 'antd'
+import { ShoppingOutlined, NumberOutlined, DollarOutlined } from '@ant-design/icons'
+
+const { Option } = Select
 
 const OrderItem = ({ 
-  item, 
   index, 
+  item, 
   predefinedProducts, 
   currency, 
   updateOrderItem, 
@@ -11,44 +15,75 @@ const OrderItem = ({
   const itemPrices = calculatePrices(item.productName, item.quantity)
 
   return (
-    <div className="order-item">
-      <label htmlFor={`product-name-${index + 1}`}>Product {index + 1}:</label>
-      <select
-        id={`product-name-${index + 1}`}
-        value={item.productName}
-        onChange={(e) => updateOrderItem(index, 'productName', e.target.value)}
-        required
-      >
-        <option value="">Select a product</option>
-        {Object.keys(predefinedProducts).map(productName => (
-          <option key={productName} value={productName}>
-            {productName}
-          </option>
-        ))}
-      </select>
-
-      <label htmlFor={`quantity-${index + 1}`}>Quantity:</label>
-      <input
-        type="number"
-        id={`quantity-${index + 1}`}
-        value={item.quantity}
-        onChange={(e) => updateOrderItem(index, 'quantity', parseInt(e.target.value) || 1)}
-        min="1"
-        required
-      />
-
-      <label htmlFor={`unit-price-${index + 1}`}>Unit Price:</label>
-      <span id={`unit-price-${index + 1}`} className="unit-price">
-        {itemPrices.unitPrice.toFixed(2)}
-      </span>
-      <span className="currency-label">{currency}</span>
-
-      <label htmlFor={`net-price-${index + 1}`}>Net Price:</label>
-      <span id={`net-price-${index + 1}`} className="net-price">
-        {itemPrices.netPrice.toFixed(2)}
-      </span>
-      <span className="currency-label">{currency}</span>
-    </div>
+    <Card 
+      size="small" 
+      style={{ 
+        background: '#fafafa',
+        border: '1px solid #d9d9d9'
+      }}
+    >
+      <Row gutter={16} align="middle">
+        <Col xs={24} sm={8}>
+          <Form.Item
+            label={`Product ${index + 1}`}
+            style={{ marginBottom: 0 }}
+          >
+            <Select
+              size="large"
+              value={item.productName}
+              onChange={(value) => updateOrderItem(index, 'productName', value)}
+              placeholder="Select a product"
+              suffixIcon={<ShoppingOutlined />}
+            >
+              <Option value="">Select a product</Option>
+              {Object.keys(predefinedProducts).map(productName => (
+                <Option key={productName} value={productName}>
+                  {productName}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Col>
+        
+        <Col xs={24} sm={4}>
+          <Form.Item
+            label="Quantity"
+            style={{ marginBottom: 0 }}
+          >
+            <InputNumber
+              size="large"
+              min={1}
+              value={item.quantity}
+              onChange={(value) => updateOrderItem(index, 'quantity', value || 1)}
+              style={{ width: '100%' }}
+              prefix={<NumberOutlined />}
+            />
+          </Form.Item>
+        </Col>
+        
+        <Col xs={24} sm={6}>
+          <Statistic
+            title="Unit Price"
+            value={itemPrices.unitPrice}
+            precision={2}
+            prefix={<DollarOutlined />}
+            suffix={currency}
+            valueStyle={{ fontSize: 16 }}
+          />
+        </Col>
+        
+        <Col xs={24} sm={6}>
+          <Statistic
+            title="Net Price"
+            value={itemPrices.netPrice}
+            precision={2}
+            prefix={<DollarOutlined />}
+            suffix={currency}
+            valueStyle={{ fontSize: 16, color: '#1890ff', fontWeight: 'bold' }}
+          />
+        </Col>
+      </Row>
+    </Card>
   )
 }
 

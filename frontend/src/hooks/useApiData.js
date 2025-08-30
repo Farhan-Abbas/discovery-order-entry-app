@@ -54,7 +54,23 @@ const useApiData = () => {
     loadData()
   }, [])
 
-  return { predefinedProducts, exchangeRates, loading, error }
+  const retryLoad = () => {
+    const loadData = async () => {
+      setLoading(true)
+      setError(null)
+      
+      await Promise.all([
+        fetchPredefinedProducts(),
+        fetchExchangeRates()
+      ])
+      
+      setLoading(false)
+    }
+
+    loadData()
+  }
+
+  return { predefinedProducts, exchangeRates, loading, error, retryLoad }
 }
 
 export default useApiData

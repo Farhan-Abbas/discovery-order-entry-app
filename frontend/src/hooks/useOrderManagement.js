@@ -1,11 +1,13 @@
 import { useState } from 'react'
 
-const useOrderManagement = (predefinedProducts, exchangeRates) => {
+const useOrderManagement = (predefinedProducts, exchangeRates, setShowOrderConfirmation, setOrderConfirmationData) => {
   const [customerName, setCustomerName] = useState('')
   const [currency, setCurrency] = useState('CAD')
   const [orderItems, setOrderItems] = useState([
     { productName: '', quantity: 1 }
   ])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
 
   // Add a new order item
   const addOrderItem = () => {
@@ -53,21 +55,23 @@ const useOrderManagement = (predefinedProducts, exchangeRates) => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setIsSubmitting(true)
+    setSubmitError(null)
     
     try {
       // Client-side validation
       if (!customerName.trim()) {
-        alert("Customer name is required.")
+        setSubmitError("Customer name is required.")
         return
       }
       
       if (customerName.length > 50) {
-        alert("Customer name cannot exceed 50 characters.")
+        setSubmitError("Customer name cannot exceed 50 characters.")
         return
       }
       
       if (!/^[a-zA-Z ]+$/.test(customerName)) {
-        alert("Customer name can only contain alphabetic characters and spaces.")
+        setSubmitError("Customer name can only contain alphabetic characters and spaces.")
         return
       }
 
@@ -77,12 +81,12 @@ const useOrderManagement = (predefinedProducts, exchangeRates) => {
 
       for (const item of orderItems) {
         if (!item.productName.trim()) {
-          alert("Please select a product for all order items.")
+          setSubmitError("Please select a product for all order items.")
           return
         }
         
         if (productNames.has(item.productName)) {
-          alert(`Duplicate product name detected: '${item.productName}'.`)
+          setSubmitError(`Duplicate product name detected: '${item.productName}'.`)
           return
         }
         productNames.add(item.productName)
@@ -90,7 +94,7 @@ const useOrderManagement = (predefinedProducts, exchangeRates) => {
       }
 
       if (totalQuantity > 1000000) {
-        alert("The total quantity for the order cannot exceed 1,000,000.")
+        setSubmitError("The total quantity for the order cannot exceed 1,000,000.")
         return
       }
 
@@ -115,15 +119,18 @@ const useOrderManagement = (predefinedProducts, exchangeRates) => {
 
       if (response.ok) {
         const result = await response.text() // Get HTML response
-        document.body.innerHTML = result // Replace page content with confirmation
+        setOrderConfirmationData(result) // Store the HTML response
+        setShowOrderConfirmation(true) // Show order confirmation component
       } else {
         const errorText = await response.text()
-        alert("Order submission failed: " + errorText)
+        setSubmitError("Order submission failed: " + errorText)
       }
 
     } catch (error) {
       console.error("Error submitting order:", error)
-      alert("An unexpected error occurred while submitting the order.")
+      setSubmitError("An unexpected error occurred while submitting the order.")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -138,7 +145,9 @@ const useOrderManagement = (predefinedProducts, exchangeRates) => {
     updateOrderItem,
     calculatePrices,
     calculateTotalPrice,
-    handleSubmit
+    handleSubmit,
+    isSubmitting,
+    submitError
   }
 }
 
