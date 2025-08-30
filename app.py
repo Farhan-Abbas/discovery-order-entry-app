@@ -37,7 +37,7 @@ PREDEFINED_PRODUCTS = {
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8000", "http://127.0.0.1:5500"],  # Frontend origin
+    allow_origins=["http://127.0.0.1:8000", "http://127.0.0.1:5500", "http://localhost:5173"],  # Frontend origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
