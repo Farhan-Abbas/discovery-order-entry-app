@@ -100,7 +100,11 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
       
       if (response.ok) {
         const result = await response.json()
-        message.success(`Order confirmation sent to ${emailAddress}`)
+        if (result.simulation) {
+          message.success(`📧 Email simulation completed! In production, confirmation would be sent to ${emailAddress}`, 5)
+        } else {
+          message.success(`Order confirmation sent to ${emailAddress}`)
+        }
         setEmailModalVisible(false)
         setEmailAddress('')
       } else {
@@ -336,7 +340,7 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
 
           {/* Email Modal */}
           <Modal
-            title="Email Order Confirmation"
+            title="📧 Email Order Confirmation (Demo Mode)"
             open={emailModalVisible}
             onOk={handleSendEmail}
             onCancel={() => {
@@ -344,12 +348,17 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
               setEmailAddress('')
             }}
             confirmLoading={emailLoading}
-            okText="Send Email"
+            okText="Simulate Email"
             cancelText="Cancel"
           >
+            <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#e6f7ff', borderRadius: 6, border: '1px solid #91d5ff' }}>
+              <p style={{ margin: 0, fontSize: 12, color: '#0958d9' }}>
+                🔧 <strong>Demo Mode:</strong> This will simulate sending an email. No actual email will be sent.
+              </p>
+            </div>
             <p>Enter the email address where you'd like to send the order confirmation PDF:</p>
             <Input
-              placeholder="Enter email address"
+              placeholder="Enter email address (demo only)"
               value={emailAddress}
               onChange={(e) => setEmailAddress(e.target.value)}
               onPressEnter={handleSendEmail}

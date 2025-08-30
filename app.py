@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Depends, Query, BackgroundTasks
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
@@ -355,7 +355,8 @@ def generate_order_pdf(order: OrderTable) -> str:
 
 def send_order_email(order: OrderTable, pdf_path: str, recipient_email: str) -> bool:
     """
-    Send order confirmation email with PDF attachment.
+    Simulate sending order confirmation email with PDF attachment.
+    This is a simulation - no actual email is sent.
     
     Args:
         order (OrderTable): The order object.
@@ -363,79 +364,51 @@ def send_order_email(order: OrderTable, pdf_path: str, recipient_email: str) -> 
         recipient_email (str): Email address to send to.
         
     Returns:
-        bool: True if email sent successfully, False otherwise.
+        bool: Always returns True (simulation mode).
     """
     try:
-        # Email configuration (using Gmail SMTP for this example)
-        # In production, use environment variables for credentials
-        smtp_config = {
-            'host': 'smtp.gmail.com',
-            'port': 587,
-            'tls': True,
-            'user': os.getenv('EMAIL_USER', 'your-email@gmail.com'),  # Set via environment variable
-            'password': os.getenv('EMAIL_PASSWORD', 'your-app-password')  # Set via environment variable
-        }
+        # Simulate email processing delay
+        import time
+        time.sleep(1)  # Simulate email sending time
         
-        # Create email template
-        email_html = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #1890ff; text-align: center;">Order Confirmation</h2>
-                
-                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="color: #1890ff; margin-top: 0;">Order Details</h3>
-                    <p><strong>Order ID:</strong> {order.id}</p>
-                    <p><strong>Customer Name:</strong> {order.customer_name}</p>
-                    <p><strong>Order Date:</strong> {order.created_at.strftime('%Y-%m-%d %H:%M:%S')}</p>
-                    <p><strong>Currency:</strong> {order.currency}</p>
-                </div>
-                
-                <p>Dear {order.customer_name},</p>
-                
-                <p>Thank you for your order! Please find attached a detailed PDF confirmation of your order.</p>
-                
-                <p>If you have any questions about your order, please don't hesitate to contact us.</p>
-                
-                <p style="margin-top: 30px;">
-                    Best regards,<br>
-                    <strong>Order Entry System</strong>
-                </p>
-                
-                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef; color: #6c757d; font-size: 12px;">
-                    This is an automated email. Please do not reply to this message.
-                </div>
-            </div>
-        </body>
-        </html>
-        """
+        # Log the simulated email details
+        print(f"[EMAIL SIMULATION] Order confirmation email would be sent:")
+        print(f"  To: {recipient_email}")
+        print(f"  Subject: Order Confirmation #{order.id} - {order.customer_name}")
+        print(f"  Order ID: {order.id}")
+        print(f"  Customer: {order.customer_name}")
+        print(f"  Date: {order.created_at.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"  Currency: {order.currency}")
+        print(f"  PDF Attachment: order_confirmation_{order.id}.pdf")
+        print(f"  Email Body: HTML formatted order confirmation")
+        print(f"[EMAIL SIMULATION] Email successfully 'sent' (simulation mode)")
         
-        # Create and send email
-        message = emails.html(
-            html=email_html,
-            subject=f"Order Confirmation #{order.id} - {order.customer_name}",
-            mail_from=smtp_config['user']
-        )
+        # In a real implementation, you would:
+        # 1. Configure SMTP settings (Gmail, SendGrid, etc.)
+        # 2. Create the email with HTML template
+        # 3. Attach the PDF file
+        # 4. Send via SMTP
+        # 5. Handle any email service errors
         
-        # Attach PDF
-        with open(pdf_path, 'rb') as pdf_file:
-            message.attach(
-                data=pdf_file.read(),
-                filename=f"order_confirmation_{order.id}.pdf",
-                content_type="application/pdf"
-            )
-        
-        # Send email
-        response = message.send(
-            to=recipient_email,
-            smtp=smtp_config
-        )
-        
-        return response.status_code == 250
+        return True  # Always succeed in simulation mode
         
     except Exception as e:
-        print(f"Failed to send email: {str(e)}")
+        print(f"[EMAIL SIMULATION] Error in simulation: {str(e)}")
         return False
+
+def cleanup_pdf_file(file_path: str):
+    """
+    Background task to clean up temporary PDF files.
+    
+    Args:
+        file_path (str): Path to the PDF file to delete.
+    """
+    try:
+        if os.path.exists(file_path):
+            os.unlink(file_path)
+            print(f"Cleaned up temporary file: {file_path}")
+    except Exception as e:
+        print(f"Error cleaning up file {file_path}: {str(e)}")
 
 # Routes
 @app.get("/")
@@ -575,12 +548,17 @@ async def get_products():
 
 # PDF and Email endpoints
 @app.get("/orders/{order_id}/pdf")
-async def download_order_pdf(order_id: int, session: Session = Depends(get_session)):
+async def download_order_pdf(
+    order_id: int, 
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session)
+):
     """
     Generate and download PDF for a specific order.
     
     Args:
         order_id (int): The ID of the order.
+        background_tasks (BackgroundTasks): Background tasks for cleanup.
         session (Session): Database session.
         
     Returns:
@@ -595,12 +573,14 @@ async def download_order_pdf(order_id: int, session: Session = Depends(get_sessi
         # Generate PDF
         pdf_path = generate_order_pdf(order)
         
+        # Schedule cleanup of the temporary file after response is sent
+        background_tasks.add_task(cleanup_pdf_file, pdf_path)
+        
         # Return file response
         return FileResponse(
             path=pdf_path,
             filename=f"order_confirmation_{order_id}.pdf",
-            media_type="application/pdf",
-            background=lambda: os.unlink(pdf_path) if os.path.exists(pdf_path) else None
+            media_type="application/pdf"
         )
         
     except Exception as e:
@@ -647,9 +627,11 @@ async def email_order_confirmation(
         if email_sent:
             return JSONResponse(
                 content={
-                    "message": f"Order confirmation emailed successfully to {email}",
+                    "message": f"📧 Email simulation successful! In a real implementation, order confirmation would be sent to {email}",
+                    "simulation": True,
                     "order_id": order_id,
-                    "email": email
+                    "email": email,
+                    "note": "This is a demonstration mode. No actual email was sent."
                 }
             )
         else:
