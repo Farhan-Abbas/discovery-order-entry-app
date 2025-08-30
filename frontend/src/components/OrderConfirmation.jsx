@@ -1,10 +1,12 @@
 import React from 'react'
 import { Card, Table, Typography, Button, Space, Divider } from 'antd'
 import { CheckCircleOutlined, ShoppingOutlined, HomeOutlined } from '@ant-design/icons'
+import { useTheme } from '../contexts/ThemeContext'
 
 const { Title, Text } = Typography
 
 const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
+  const { isDarkMode } = useTheme()
   // Parse the HTML response to extract order data
   const parseOrderData = (htmlString) => {
     const parser = new DOMParser()
@@ -86,7 +88,9 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
   return (
     <div style={{ 
       padding: '16px', 
-      background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
+      background: isDarkMode 
+        ? 'linear-gradient(135deg, #0f5132 0%, #0a3d2a 100%)'
+        : 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
       minHeight: '100vh'
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto', width: '100%' }}>
@@ -105,10 +109,20 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
                 marginBottom: 12 
               }} 
             />
-            <Title level={2} style={{ color: '#52c41a', marginBottom: 8, fontSize: '24px' }}>
+            <Title level={2} style={{ 
+              color: '#52c41a', 
+              marginBottom: 8, 
+              fontSize: '24px' 
+            }}>
               Order Confirmed!
             </Title>
-            <Text type="secondary" style={{ fontSize: 14 }}>
+            <Text 
+              type="secondary" 
+              style={{ 
+                fontSize: 14,
+                color: isDarkMode ? 'rgba(255, 255, 255, 0.65)' : undefined
+              }}
+            >
               Your order has been successfully submitted and processed.
             </Text>
           </div>
@@ -117,32 +131,38 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
 
           {/* Order Details Section */}
           <div style={{ marginBottom: 24 }}>
-            <Title level={4} style={{ marginBottom: 16 }}>
+            <Title level={4} style={{ 
+              marginBottom: 16,
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : undefined
+            }}>
               📋 Order Details
             </Title>
             
             <div style={{ 
-              background: '#f6ffed', 
+              background: isDarkMode ? '#162312' : '#f6ffed', 
               padding: 16, 
               borderRadius: 8,
-              border: '1px solid #b7eb8f'
+              border: isDarkMode ? '1px solid #237804' : '1px solid #b7eb8f'
             }}>
               <Space direction="vertical" size="small" style={{ width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                  <Text strong>Order ID:</Text>
+                  <Text strong style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : undefined }}>Order ID:</Text>
                   <Text code style={{ fontSize: 14 }}>{parsedData.orderId}</Text>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                  <Text strong>Customer Name:</Text>
-                  <Text>{parsedData.customerName}</Text>
+                  <Text strong style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : undefined }}>Customer Name:</Text>
+                  <Text style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : undefined }}>{parsedData.customerName}</Text>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                  <Text strong>Currency:</Text>
-                  <Text>{parsedData.currency}</Text>
+                  <Text strong style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : undefined }}>Currency:</Text>
+                  <Text style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : undefined }}>{parsedData.currency}</Text>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                  <Text strong>Order Date:</Text>
-                  <Text style={{ fontSize: 13 }}>{parsedData.orderDate}</Text>
+                  <Text strong style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : undefined }}>Order Date:</Text>
+                  <Text style={{ 
+                    fontSize: 13,
+                    color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : undefined 
+                  }}>{parsedData.orderDate}</Text>
                 </div>
               </Space>
             </div>
@@ -150,7 +170,10 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
 
           {/* Order Items Table */}
           <div style={{ marginBottom: 24 }}>
-            <Title level={4} style={{ marginBottom: 16 }}>
+            <Title level={4} style={{ 
+              marginBottom: 16,
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : undefined
+            }}>
               🛒 Order Items
             </Title>
             
@@ -160,9 +183,14 @@ const OrderConfirmation = ({ orderData, onCreateAnotherOrder }) => {
               pagination={false}
               scroll={{ x: 'max-content' }}
               summary={() => (
-                <Table.Summary.Row style={{ background: '#f6ffed' }}>
+                <Table.Summary.Row style={{ 
+                  background: isDarkMode ? '#162312' : '#f6ffed' 
+                }}>
                   <Table.Summary.Cell colSpan={3}>
-                    <Text strong style={{ fontSize: 14 }}>Total Order Amount:</Text>
+                    <Text strong style={{ 
+                      fontSize: 14,
+                      color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : undefined
+                    }}>Total Order Amount:</Text>
                   </Table.Summary.Cell>
                   <Table.Summary.Cell align="right">
                     <Text strong style={{ fontSize: 16, color: '#52c41a' }}>

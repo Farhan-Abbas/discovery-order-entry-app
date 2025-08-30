@@ -8,36 +8,20 @@ import OrderItems from './components/OrderItems'
 import CurrencySelector from './components/CurrencySelector'
 import PricingSummary from './components/PricingSummary'
 import OrderConfirmation from './components/OrderConfirmation'
+import ThemeToggle from './components/ThemeToggle'
 
-// Import custom hooks
+// Import custom hooks and contexts
 import useApiData from './hooks/useApiData'
 import useOrderManagement from './hooks/useOrderManagement'
+import { useTheme } from './contexts/ThemeContext'
 
 const { Header, Content } = Layout
 const { Title } = Typography
 
-// Enterprise theme configuration
-const theme = {
-  token: {
-    colorPrimary: '#1890ff',
-    colorSuccess: '#52c41a',
-    colorWarning: '#faad14',
-    colorError: '#ff4d4f',
-    colorInfo: '#1890ff',
-    borderRadius: 6,
-    colorBgContainer: '#ffffff',
-  },
-  components: {
-    Card: {
-      borderRadiusLG: 8,
-    },
-    Button: {
-      borderRadius: 6,
-    },
-  },
-}
-
 function App() {
+  // Get theme from context
+  const { currentTheme, isDarkMode } = useTheme()
+  
   // State for order confirmation
   const [showOrderConfirmation, setShowOrderConfirmation] = useState(false)
   const [orderConfirmationData, setOrderConfirmationData] = useState(null)
@@ -73,7 +57,7 @@ function App() {
   // Show order confirmation if order was submitted successfully
   if (showOrderConfirmation && orderConfirmationData) {
     return (
-      <ConfigProvider theme={theme}>
+      <ConfigProvider theme={currentTheme}>
         <OrderConfirmation 
           orderData={orderConfirmationData}
           onCreateAnotherOrder={handleCreateAnotherOrder}
@@ -85,14 +69,16 @@ function App() {
   // Show loading state
   if (loading) {
     return (
-      <ConfigProvider theme={theme}>
+      <ConfigProvider theme={currentTheme}>
         <Layout style={{ minHeight: '100vh' }}>
           <Content style={{ 
             padding: '16px', 
             display: 'flex', 
             justifyContent: 'center', 
             alignItems: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            background: isDarkMode 
+              ? 'linear-gradient(135deg, #1a1a1a 0%, #0d1117 100%)'
+              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
           }}>
             <Card style={{ 
               textAlign: 'center', 
@@ -101,7 +87,11 @@ function App() {
               maxWidth: 400
             }}>
               <Spin size="large" />
-              <div style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
+              <div style={{ 
+                marginTop: 16, 
+                fontSize: 16, 
+                color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : '#666' 
+              }}>
                 Loading products and exchange rates...
               </div>
             </Card>
@@ -114,26 +104,32 @@ function App() {
   // Show error state with retry option
   if (error) {
     return (
-      <ConfigProvider theme={theme}>
+      <ConfigProvider theme={currentTheme}>
         <Layout style={{ minHeight: '100vh' }}>
           <Header style={{ 
-            background: '#fff', 
+            background: currentTheme.components.Layout.colorBgHeader, 
             padding: '0 16px', 
             boxShadow: '0 2px 8px #f0f1f2',
-            borderBottom: '1px solid #e8e8e8'
+            borderBottom: `1px solid ${currentTheme.token.colorBorder}`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
             <Title level={3} style={{ 
               margin: '16px 0', 
-              color: '#1890ff',
+              color: isDarkMode ? '#4db8ff' : '#1890ff',
               fontWeight: 600,
               fontSize: '18px'
             }}>
               📋 Enterprise Order Entry System
             </Title>
+            <ThemeToggle />
           </Header>
           <Content style={{ 
             padding: '16px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            background: isDarkMode 
+              ? 'linear-gradient(135deg, #1a1a1a 0%, #0d1117 100%)'
+              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
           }}>
             <div style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
               <Alert
@@ -162,27 +158,33 @@ function App() {
   const totalOrderPrice = calculateTotalPrice()
 
   return (
-    <ConfigProvider theme={theme}>
+    <ConfigProvider theme={currentTheme}>
       <Layout style={{ minHeight: '100vh' }}>
         <Header style={{ 
-          background: '#fff', 
+          background: currentTheme.components.Layout.colorBgHeader, 
           padding: '0 16px', 
           boxShadow: '0 2px 8px #f0f1f2',
-          borderBottom: '1px solid #e8e8e8'
+          borderBottom: `1px solid ${currentTheme.token.colorBorder}`,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
           <Title level={3} style={{ 
             margin: '16px 0', 
-            color: '#1890ff',
+            color: isDarkMode ? '#4db8ff' : '#1890ff',
             fontWeight: 600,
             fontSize: '18px'
           }}>
             📋 Enterprise Order Entry System
           </Title>
+          <ThemeToggle />
         </Header>
         
         <Content style={{ 
           padding: '16px', 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: isDarkMode 
+            ? 'linear-gradient(135deg, #1a1a1a 0%, #0d1117 100%)'
+            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           minHeight: 'calc(100vh - 64px)'
         }}>
           <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
@@ -199,18 +201,28 @@ function App() {
             
             <Card 
               title={
-                <span style={{ fontSize: 18, fontWeight: 600 }}>
+                <span style={{ 
+                  fontSize: 18, 
+                  fontWeight: 600,
+                  color: isDarkMode ? '#ffffff' : '#000000'
+                }}>
                   🛒 Create New Order
                 </span>
               }
               style={{ 
-                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                boxShadow: isDarkMode 
+                  ? '0 8px 24px rgba(0,0,0,0.6)'
+                  : '0 8px 24px rgba(0,0,0,0.12)',
                 borderRadius: 12,
-                background: '#fff'
+                background: isDarkMode ? '#141414' : '#fff',
+                border: isDarkMode ? '1px solid #424242' : 'none'
               }}
               headStyle={{
-                background: 'linear-gradient(90deg, #f0f2ff 0%, #f9f0ff 100%)',
-                borderRadius: '12px 12px 0 0'
+                background: isDarkMode 
+                  ? 'linear-gradient(90deg, #1e1e1e 0%, #2d2d2d 100%)'
+                  : 'linear-gradient(90deg, #f0f2ff 0%, #f9f0ff 100%)',
+                borderRadius: '12px 12px 0 0',
+                borderBottom: isDarkMode ? '1px solid #424242' : 'none'
               }}
             >
               <form onSubmit={handleSubmit}>
@@ -250,9 +262,14 @@ function App() {
                       height: 44,
                       fontSize: 14,
                       fontWeight: 600,
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: isDarkMode 
+                        ? 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)'
+                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       border: 'none',
-                      boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                      boxShadow: isDarkMode 
+                        ? '0 4px 15px rgba(0,0,0,0.5)'
+                        : '0 4px 15px rgba(0,0,0,0.2)',
+                      color: '#ffffff'
                     }}
                   >
                     {isSubmitting ? '🔄 Submitting Order...' : '✅ Submit Order'}

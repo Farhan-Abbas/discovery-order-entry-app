@@ -1,10 +1,13 @@
 import React from 'react'
 import { Form, Select } from 'antd'
 import { DollarOutlined } from '@ant-design/icons'
+import { useTheme } from '../contexts/ThemeContext'
 
 const { Option } = Select
 
 const CurrencySelector = ({ currency, setCurrency }) => {
+  const { isDarkMode } = useTheme()
+  
   const currencies = [
     { value: 'CAD', label: 'CAD - Canadian Dollar' },
     { value: 'USD', label: 'USD - US Dollar' },
@@ -14,7 +17,11 @@ const CurrencySelector = ({ currency, setCurrency }) => {
 
   return (
     <div style={{ marginTop: 24 }}>
-      <Form.Item label="Currency">
+      <Form.Item label={
+        <span style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)' }}>
+          Currency
+        </span>
+      }>
         <Select
           size="large"
           value={currency}

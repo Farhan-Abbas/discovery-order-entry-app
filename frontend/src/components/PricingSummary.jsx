@@ -1,13 +1,18 @@
 import React from 'react'
 import { Card, Statistic } from 'antd'
 import { DollarOutlined } from '@ant-design/icons'
+import { useTheme } from '../contexts/ThemeContext'
 
 const PricingSummary = ({ totalOrderPrice, currency }) => {
+  const { isDarkMode } = useTheme()
+  
   return (
     <Card 
       style={{ 
         marginTop: 24, 
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: isDarkMode 
+          ? 'linear-gradient(135deg, #1e3a8a 0%, #312e81 100%)'
+          : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         border: 'none'
       }}
     >

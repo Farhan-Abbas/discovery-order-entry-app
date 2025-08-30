@@ -1,6 +1,7 @@
 import React from 'react'
 import { Card, Button, Space, Typography } from 'antd'
 import { PlusOutlined, MinusOutlined } from '@ant-design/icons'
+import { useTheme } from '../contexts/ThemeContext'
 import OrderItem from './OrderItem'
 
 const { Title } = Typography
@@ -14,9 +15,18 @@ const OrderItems = ({
   addOrderItem,
   removeLastOrderItem
 }) => {
+  const { isDarkMode } = useTheme()
+  
   return (
     <Card 
-      title={<Title level={4} style={{ margin: 0 }}>Order Items</Title>}
+      title={
+        <Title level={4} style={{ 
+          margin: 0, 
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)' 
+        }}>
+          Order Items
+        </Title>
+      }
       style={{ marginTop: 16 }}
     >
       <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -46,6 +56,9 @@ const OrderItems = ({
             onClick={removeLastOrderItem}
             disabled={orderItems.length <= 1}
             size="default"
+            style={{
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : undefined
+            }}
           >
             Remove Last Item
           </Button>

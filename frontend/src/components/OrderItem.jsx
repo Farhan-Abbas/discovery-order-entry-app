@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Row, Col, Form, Select, InputNumber, Statistic, Card } from 'antd'
 import { ShoppingOutlined, NumberOutlined, DollarOutlined } from '@ant-design/icons'
+import { useTheme } from '../contexts/ThemeContext'
 
 const { Option } = Select
 
@@ -12,6 +13,7 @@ const OrderItem = ({
   updateOrderItem, 
   calculatePrices 
 }) => {
+  const { isDarkMode } = useTheme()
   const [quantityError, setQuantityError] = useState('')
   const itemPrices = calculatePrices(item.productName, item.quantity)
 
@@ -79,14 +81,18 @@ const OrderItem = ({
     <Card 
       size="small" 
       style={{ 
-        background: '#fafafa',
-        border: '1px solid #d9d9d9'
+        background: isDarkMode ? '#141414' : '#fafafa',
+        border: isDarkMode ? '1px solid #424242' : '1px solid #d9d9d9'
       }}
     >
       <Row gutter={[16, 12]} align="top">
         <Col xs={24} sm={24} md={10} lg={9} xl={9}>
           <Form.Item
-            label={`Product ${index + 1}`}
+            label={
+              <span style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)' }}>
+                Product {index + 1}
+              </span>
+            }
             style={{ marginBottom: 8 }}
           >
             <Select
@@ -109,7 +115,11 @@ const OrderItem = ({
         
         <Col xs={24} sm={8} md={5} lg={5} xl={5}>
           <Form.Item
-            label="Quantity"
+            label={
+              <span style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)' }}>
+                Quantity
+              </span>
+            }
             style={{ marginBottom: 8 }}
             validateStatus={quantityError ? 'error' : ''}
             help={quantityError}
@@ -134,12 +144,19 @@ const OrderItem = ({
         <Col xs={12} sm={8} md={4} lg={5} xl={5}>
           <div style={{ padding: '4px 8px' }}>
             <Statistic
-              title="Unit Price"
+              title={
+                <span style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)' }}>
+                  Unit Price
+                </span>
+              }
               value={itemPrices.unitPrice}
               precision={2}
               prefix={<DollarOutlined />}
               suffix={currency}
-              valueStyle={{ fontSize: 13 }}
+              valueStyle={{ 
+                fontSize: 13,
+                color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)'
+              }}
             />
           </div>
         </Col>
@@ -147,12 +164,20 @@ const OrderItem = ({
         <Col xs={12} sm={8} md={5} lg={5} xl={5}>
           <div style={{ padding: '4px 8px' }}>
             <Statistic
-              title="Net Price"
+              title={
+                <span style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)' }}>
+                  Net Price
+                </span>
+              }
               value={itemPrices.netPrice}
               precision={2}
               prefix={<DollarOutlined />}
               suffix={currency}
-              valueStyle={{ fontSize: 13, color: '#1890ff', fontWeight: 'bold' }}
+              valueStyle={{ 
+                fontSize: 13, 
+                color: isDarkMode ? '#4db8ff' : '#1890ff', 
+                fontWeight: 'bold' 
+              }}
             />
           </div>
         </Col>
